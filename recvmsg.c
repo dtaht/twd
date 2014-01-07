@@ -46,3 +46,70 @@ if (nRet > 0) {
            }
     }
 }
+
+
+// misc other stuff
+
+struct DATA_to_SEND pkt;
+struct msghdr msg; 
+struct iovec iov[1];  
+memset(&msg, '\0', sizeof(msg));
+msg.msg_iov = iov;
+msg.msg_iovlen = 1;
+iov[0].iov_base = (char *) &pkt;
+iov[0].iov_len = sizeof(pkt);
+nRet = sendmsg(udpSocket, &msg,0); 
+
+Receiver Side (assumption DATA_To_SEND has a parameter named "seq"):
+
+struct DATA_to_SEND pkt;
+seqNum = ((struct DATA_to_SEND *) iov[0].iov_base)->seq;
+
+
+// for tos
+
+unsigned char set = 0x03;
+if(setsockopt(udpSocket, IPPROTO_IP, IP_RECVTOS, &set,sizeof(set))<0) 
+{
+    printf("cannot set recvtos\n");
+} 
+else
+{
+        printf("socket set to recvtos\n");
+// and get it
+
+struct PC_Pkt pkt;
+ int *ecnptr;
+ unsigned char received_ecn;
+
+ struct msghdr msg; 
+ struct iovec iov[1];  
+ memset(&msg, '\0', sizeof(msg));
+ msg.msg_iov = iov; 
+ msg.msg_iovlen = 1;
+ iov[0].iov_base = (char *) &pkt;
+ iov[0].iov_len = sizeof(pkt);
+
+ int cmsg_size = sizeof(struct cmsghdr)+sizeof(received_ecn);
+ char buf[CMSG_SPACE(sizeof(received_ecn))];
+ msg.msg_control = buf;
+ msg.msg_controllen = sizeof(buf); 
+
+ nRet = recvmsg(udpSocket, &msg, 0);
+
+ if (nRet > 0) {
+struct cmsghdr *cmsg;
+for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL;
+cmsg = CMSG_NXTHDR(&msg,cmsg)) {
+         if ((cmsg->cmsg_level == IPPROTO_IP) && 
+         (cmsg->cmsg_type == IP_TOS) && (cmsg->cmsg_len) ){
+                ecnptr = (int *) CMSG_DATA(cmsg);
+        received_ecn = *ecnptr;
+        int isecn =  ((received_ecn & INET_ECN_MASK) == INET_ECN_CE);
+
+                printf("received_ecn = %i and %d, is ECN CE marked = %d \n", ecnptr, received_ecn, isecn); 
+
+                 break;
+    }
+     }
+}
