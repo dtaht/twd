@@ -12,6 +12,9 @@
   time, and both clients attempt to start at the same time.
 * Start Test
   test proceeds for the duration negotiated.
+  an innovation of the protocol is that the packets are padded with seqnos
+  and timestamps of the most recently recieved packets on the other end,
+  even though the other end is also operating isochronously but asyncronously
 * End Test
   although we will try to keep this minimal, summary data is sent at the
   concusion of the test, and if large, this could get messy.
