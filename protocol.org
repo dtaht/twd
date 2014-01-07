@@ -1,0 +1,18 @@
+* Register
+  Timestamps are always sent.
+  Registration involves sending a challenge, along with the parameters
+  of the test and characteristics of the client, and desired communication
+  port number, response involves selecting a new port number, characteristics
+  of the server and sending the accepted parameters of the test, and a cookie.
+* Initialization and nat hole punching
+  client attempts to rendezvous on that port + cookie, server sends acceptance 
+  from that port to the visible port from the client. Client indicates
+  it got acceptance and proposes a start time for the test based on a
+  sane delta of the rtt*3 and the relevant timestamps. Server accepts start
+  time, and both clients attempt to start at the same time.
+* Start Test
+  test proceeds for the duration negotiated.
+* End Test
+  although we will try to keep this minimal, summary data is sent at the
+  concusion of the test, and if large, this could get messy.
+* End connection

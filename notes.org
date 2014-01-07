@@ -1,0 +1,29 @@
+* Look at:
+** recvmsg from mosh, lighttpd
+** IPv4 and IPv6 parsing routines from gpsd netlib, apache, elsewhere
+** link against rt
+** get timerfd code from somewhere if needed (can I get by with select?)
+** Test against realtime scheduler (pthread?)
+* DONE Think about options
+** -s --server no -c needed
+** -4 -6 
+** --version
+** --help
+** -d --debug
+** -D --dscp
+** -F --foreground
+** -i --interval
+** -p --packet-size
+** -r --randomize data
+** -R --Randomize size
+** -l --length test duration
+** -w --write file
+** -L --logdir
+** -h --help
+** -P --passfail pass/fail test
+* Tests
+** -t --test ecn 
+** ecn  test preservation of ecn bit
+** dscp test perservation of dscp bits
+** tos  test preservation of all bits
+** selftest test characteristics of server
