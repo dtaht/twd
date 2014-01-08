@@ -304,19 +304,30 @@ int finish_setup(TWD_Options_t *o,int idx,int argc,char **argv __attribute__((un
   assert(argv != NULL);
   
   g_numhosts = argc - idx;
-  assert(g_numhosts > 0);
-  g_hosts = calloc(idx,sizeof(sockaddr__u));
   
-  if (g_hosts == NULL)
-    return ENOMEM;
-  
-  for (int i = 0 ; idx < argc ; idx++ , i++)
+  if (g_numhosts == 0)
   {
-    int rc = to_addr_port(&g_hosts[i],argv[idx]);
-    if (rc != 0)
+    if (!o->server)
     {
-      fprintf(stderr,"%s: %s\n",argv[idx],strerror(rc));
-      return rc;
+      fprintf(stderr,"need at least one address\n");
+      return EINVAL;
+    }
+  }
+  else
+  {
+    g_hosts = calloc(idx,sizeof(sockaddr__u));
+  
+    if (g_hosts == NULL)
+      return ENOMEM;
+  
+    for (int i = 0 ; idx < argc ; idx++ , i++)
+    {
+      int rc = to_addr_port(&g_hosts[i],argv[idx]);
+      if (rc != 0)
+      {
+        fprintf(stderr,"%s: %s\n",argv[idx],strerror(rc));
+        return rc;
+      }
     }
   }
   
