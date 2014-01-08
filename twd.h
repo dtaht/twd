@@ -26,8 +26,6 @@ typedef struct output_type OutputType_t;
 
 struct twd_options {
   unsigned int verbose:1;
-  unsigned int ipv4:1;
-  unsigned int ipv6:1;
   unsigned int up:1;
   unsigned int dn:1;
   unsigned int bidir:1;
@@ -43,7 +41,6 @@ struct twd_options {
   unsigned int test_tos:1;
   unsigned int test_all:1;
   unsigned int test_self:1;
-  unsigned int multicast:1;
   unsigned int server:1;
   int debug;
   int packet_size;

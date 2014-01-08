@@ -42,9 +42,6 @@ int usage (char *err) {
 	 "    -1 --up            test up direction only\n"
 	 "    -2 --down          test down direction only\n"
 	 "    -3 --bidir         test bidirectionally\n"
-	 "    -4 --ipv4          listen on/use ipv4\n"
-	 "    -6 --ipv6          listen on/use ipv6\n"
-	 "    -m --multicast     use multicast\n"
 	 "    -r --random-data   use a random data size\n" 
 	 "    -i --interval      interval [default 10ms]\n"
 	 "    -L --logdir        log directory [default .]\n"
@@ -86,9 +83,6 @@ static const struct option long_options[] = {
   { "up"		, no_argument		, NULL , '1' } ,
   { "down"		, no_argument		, NULL , '2' } ,
   { "bidir"		, no_argument		, NULL , '3' } ,
-  { "ipv4"		, no_argument		, NULL , '4' } ,
-  { "ipv6"		, no_argument		, NULL , '6' } ,
-  { "multicast"		, no_argument		, NULL , 'm' } ,
   { "ecn"		, no_argument		, NULL , 'e' } ,
   { "test"		, no_argument		, NULL , 't' } ,
   { "test-ecn"		, no_argument		, NULL , 'E' } ,
@@ -106,9 +100,6 @@ static const struct option long_options[] = {
 int
 print_enabled_options(TWD_Options_t *o, FILE *fp) {
   fprintf(fp,"Options: ");
-  penabled(multicast);
-  penabled(ipv4);
-  penabled(ipv6);
   penabled(debug);
   penabled(server);
   penabled(test_owd);
@@ -177,9 +168,6 @@ int process_options(int argc, char **argv, TWD_Options_t *o)
 	case '1': o->up = 1; break;
 	case '2': o->dn = 1; break;
 	case '3': o->up = 1; o->dn = 1; break;
-	case '4': o->ipv4 = 1; break;
-	case '6': o->ipv6 = 1; break;
-	case 'm': o->multicast = 1; break;
 	case 'w': o->filename = optarg; break; 
 	case '@': o->test_self = 1; break; 
 	case 't': o->test_owd = 1; break; 
