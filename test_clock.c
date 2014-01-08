@@ -1,5 +1,8 @@
-// This FIXME fails to compile with -std=c99 for some reason. Works without
-// #define __USE_ISOC11 1 didn't work either
+
+#ifdef __GNUC__
+#  define _GNU_SOURCE
+#endif
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
