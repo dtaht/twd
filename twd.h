@@ -2,6 +2,7 @@
 #define _twd_h
 
 #include "parse_addr.h"
+#include <stdint.h>
 
 #ifndef __GNUC__
 #  define __attribute__(x)
@@ -21,35 +22,35 @@ struct output_type {
 typedef struct output_type OutputType_t;
 
 struct twd_options {
-  unsigned int verbose:1;
-  unsigned int up:1;
-  unsigned int dn:1;
-  unsigned int bidir:1;
-  unsigned int dontfork:1;
-  unsigned int help:1;
-  unsigned int randomize_data:1;
-  unsigned int randomize_size:1;
-  unsigned int passfail:1;
-  unsigned int ecn:1;
-  unsigned int ipv4:1;
-  unsigned int ipv6:1;
-  unsigned int server:1;
-  unsigned int multicast:1;
-  unsigned int test_owd:1;
-  unsigned int test_ecn:1;
-  unsigned int test_diffserv:1;
-  unsigned int test_tos:1;
-  unsigned int test_all:1;
-  unsigned int test_self:1;
-  unsigned int test_fq:1;
-  unsigned int test_bw:1;
-  int debug;
-  int packet_size;
-  int tests;
-  unsigned long length;
-  unsigned long interval;
-  int diffserv;
-  int format;
+  uint32_t verbose:1;
+  uint32_t up:1;
+  uint32_t dn:1;
+  uint32_t bidir:1;
+  uint32_t dontfork:1;
+  uint32_t help:1;
+  uint32_t randomize_data:1;
+  uint32_t randomize_size:1;
+  uint32_t passfail:1;
+  uint32_t ecn:1;
+  uint32_t ipv4:1;
+  uint32_t ipv6:1;
+  uint32_t server:1;
+  uint32_t multicast:1;
+  uint32_t test_owd:1;
+  uint32_t test_ecn:1;
+  uint32_t test_diffserv:1;
+  uint32_t test_tos:1;
+  uint32_t test_all:1;
+  uint32_t test_self:1;
+  uint32_t test_fq:1;
+  uint32_t test_bw:1;
+  uint32_t debug;
+  uint32_t packet_size;
+  uint32_t tests;
+  uint64_t length;
+  uint64_t interval;
+  uint32_t diffserv;
+  uint32_t format;
   char *logdir;
   char *filename;
   char **hosts;
