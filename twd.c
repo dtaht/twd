@@ -190,14 +190,14 @@ struct tests_hosts {
 
 typedef struct tests_hosts TestHosts_t;
 
-int finish_setup(TWD_Options_t *o,int idx,int argc,char **argv)
+int finish_setup(TWD_Options_t *o,int idx,int argc,char **argv __attribute__((unused)))
 {
-  char    string[MAX_MTU];
-  TestHosts_t *hosts_under_tests = (TestHosts_t *) 
+  // char    string[MAX_MTU];
+  // TestHosts_t *hosts_under_tests = (TestHosts_t *) 
     calloc(1,(idx + 1) * sizeof(TestHosts_t));
   for(int i = idx; i < argc; i++)
   {
-    size_t  len = strlen(argv[i]);
+     //    size_t  len = strlen(argv[i]);
     
   }
   if(o->debug > 0) print_enabled_options(o, stderr);
@@ -209,10 +209,11 @@ static void default_options(TWD_Options_t *q) {
 }
 
 int main(int argc, char **argv) {
-  int result;
+  //int result;
   int host_count;
-  TWD_Options_t options = {0};
+  TWD_Options_t options;
 
+  memset(&options,0,sizeof(options));
   default_options(&options);
 
   host_count = process_options(argc,argv,&options);
