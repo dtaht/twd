@@ -9,6 +9,13 @@
 
 #define MAX_MTU 1280
 
+typedef union
+{
+  struct sockaddr     sa;
+  struct sockaddr_in  sin;
+  struct sockaddr_in6 sin6;
+} sockaddr__u;
+
 extern int parse_ipqos(const char *cp);
 extern const char * iptos2str(int iptos);
 
@@ -21,8 +28,6 @@ typedef struct output_type OutputType_t;
 
 struct twd_options {
   unsigned int verbose:1;
-  unsigned int ipv4:1;
-  unsigned int ipv6:1;
   unsigned int up:1;
   unsigned int dn:1;
   unsigned int bidir:1;
@@ -32,6 +37,10 @@ struct twd_options {
   unsigned int randomize_size:1;
   unsigned int passfail:1;
   unsigned int ecn:1;
+  unsigned int ipv4:1;
+  unsigned int ipv6:1;
+  unsigned int server:1;
+  unsigned int multicast:1;
   unsigned int test_owd:1;
   unsigned int test_ecn:1;
   unsigned int test_diffserv:1;
@@ -40,8 +49,6 @@ struct twd_options {
   unsigned int test_self:1;
   unsigned int test_fq:1;
   unsigned int test_bw:1;
-  unsigned int multicast:1;
-  unsigned int server:1;
   int debug;
   int packet_size;
   int tests;
@@ -52,6 +59,7 @@ struct twd_options {
   char *logdir;
   char *filename;
   char **hosts;
+  sockaddr__u server_address;
 };
 
 typedef struct twd_options TWD_Options_t;

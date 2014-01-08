@@ -22,15 +22,14 @@ DEBUG:=-DDEBUG
 PROGS=twd test_clock
 BINDIR=/usr/local/bin
 OBJECTS=twd.o
-# Note gnu99 lets posix get_time work. c99 doesn't
-CFLAGS += -O2 -std=gnu99 -Wall -Wextra -pedantic
+CFLAGS += -O2 -Wall -Wextra -pedantic
 STRIP=strip
 
 ifeq "$(PLATFORM)" "Darwin"
 CFLAGS += -fno-common
 LDFLAGS  = -dynamiclib
 else
-CC=gcc
+CC=gcc -std=c99
 CFLAGS += -rdynamic
 endif
 
