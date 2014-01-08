@@ -1,4 +1,4 @@
-/* dscp lookup routines lifted wholesale from openssh */
+/* dscp lookup routines lifted mostly wholesale from openssh */
 
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
@@ -45,9 +45,7 @@
 #define strcasecmp(a,b) _stricmp(a,b)
 #define snprintf _snprintf
 #endif
-
-int parse_ipqos(const char *cp);
-const char * iptos2str(int iptos);
+#include "dscp.h"
 
 /*
  * Definitions for IP type of service (ip_tos)
@@ -101,10 +99,7 @@ const char * iptos2str(int iptos);
 # define	IPTOS_DSCP_EF		0xb8
 #endif /* IPTOS_DSCP_EF */
 
-static const struct {
-	const char *name;
-	int value;
-} ipqos[] = {
+struct ipqos_data ipqos[] = {
 	{ "af11", IPTOS_DSCP_AF11 },
 	{ "af12", IPTOS_DSCP_AF12 },
 	{ "af13", IPTOS_DSCP_AF13 },
