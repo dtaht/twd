@@ -23,6 +23,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#include "dscp.h"
 #include "twd.h"
 #include "parse_addr.h"
 

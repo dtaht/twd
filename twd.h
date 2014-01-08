@@ -9,9 +9,6 @@
 
 #define MAX_MTU 1280
 
-extern int parse_ipqos(const char *cp);
-extern const char * iptos2str(int iptos);
-
 struct output_type {
   char *desc;
   int id;
