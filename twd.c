@@ -4,6 +4,8 @@ Copyright (C) 2014 Michael D. Täht
 
 #define _GNU_SOURCE
 
+#include <ctype.h>
+#include <limits.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -16,7 +18,17 @@ Copyright (C) 2014 Michael D. Täht
 #include <iconv.h>
 #include <malloc.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
 #include "twd.h"
+
+sockaddr__u *g_hosts;
+size_t       g_numhosts;
+
+/************************************************************************/
 
 int usage (char *err) {
   if(err) fprintf(stderr,"%s\n",err);
@@ -184,22 +196,132 @@ int process_options(int argc, char **argv, TWD_Options_t *o)
   return optind;
 }
 
-struct tests_hosts {
-  char hostname[255];
-};
+int to_port_num(const char *tport)
+{
+  struct servent *presult;
+  struct servent  result;
+  char            tmp[BUFSIZ];
+  
+  /*-------------------------------------------------------------------
+  ; assume a port number, not a name.  Hopefully, no port names start
+  ; with a digit.
+  ;--------------------------------------------------------------------*/
+  
+  if (isdigit(*tport))
+  {
+    unsigned long  port;
+    char          *p;
+    
+    errno = 0;
+    port  = strtoul(tport,&p,10);
+    if ((errno != 0) || (port > USHRT_MAX) || (p == tport))
+      return -1;
+    return port;
+  }
+  
+  if (getservbyname_r(tport,"udp",&result,tmp,sizeof(tmp),&presult) != 0)
+    return -1;
 
-typedef struct tests_hosts TestHosts_t;
+  return ntohs((short)result.s_port);
+}
 
+int to_addr_port(
+	sockaddr__u *restrict sockaddr,
+	const char  *restrict addrport
+)
+{
+  assert(sockaddr != NULL);
+  assert(addrport != NULL);
+  
+  size_t  len = strlen(addrport);
+  char    ipaddr[len + 1];
+  char   *tport;
+  int     port;
+
+  memcpy(ipaddr,addrport,len + 1);
+
+  /*--------------------------------------------------------------------
+  ; We search backwards through the string, instead of forwards, because
+  ; IPv6 addresses has embedded colons (but are embedded in brackets, with
+  ; the port outside the brackets.  It will look like:
+  ;
+  ;	[fc00::1]:2222
+  ;
+  ;-----------------------------------------------------------------------*/
+
+  tport = memrchr(ipaddr,':',len);
+  if (tport == NULL)
+    return EINVAL;
+  
+  *tport++ = '\0';
+  
+  port = to_port_num(tport);
+  if (port < 0)
+    return EINVAL;
+  
+  /*--------------------------------------------------------------------
+  ; if the first character of the addrport is a bracket, this is an IPv6
+  ; address.  Using a hack, if the two characters previous to the port text
+  ; is NOT a closing bracket, we return an error, otherwise, we NUL out the
+  ; closing bracket, and skip the addrport pointer past the opening bracket,
+  ; thus leaving us with a straight IPv6 address.
+  ;-------------------------------------------------------------------------*/
+  
+  if (ipaddr[0] == '[')
+  {
+    if (tport[-2] != ']')
+      return EINVAL;
+    tport[-2] = '\0';
+    memmove(ipaddr,&ipaddr[1],len);
+    
+    if (inet_pton(AF_INET6,ipaddr,sockaddr->sin6.sin6_addr.s6_addr))
+    {
+      sockaddr->sin6.sin6_family = AF_INET6;
+      sockaddr->sin6.sin6_port   = htons(port);
+      return 0;
+    }
+  }
+  
+  /*--------------------------------------------------------------------
+  ; else assume we have an IPv4 address and carry on.
+  ;--------------------------------------------------------------------*/
+  
+  else
+  {
+    if (inet_pton(AF_INET,ipaddr,&sockaddr->sin.sin_addr.s_addr))
+    {
+      sockaddr->sin.sin_family = AF_INET;
+      sockaddr->sin.sin_port   = htons(port);
+      return 0;
+    }
+  }
+  return EINVAL;
+}
+    
 int finish_setup(TWD_Options_t *o,int idx,int argc,char **argv __attribute__((unused)))
 {
-  // char    string[MAX_MTU];
-  // TestHosts_t *hosts_under_tests = (TestHosts_t *) 
-    calloc(1,(idx + 1) * sizeof(TestHosts_t));
-  for(int i = idx; i < argc; i++)
+  assert(o    != NULL);
+  assert(idx  >  0);
+  assert(idx  <= argc);
+  assert(argv != NULL);
+  
+  g_numhosts = argc - idx;
+  assert(g_numhosts > 0);
+  g_hosts = calloc(idx,sizeof(sockaddr__u));
+  
+  if (g_hosts == NULL)
+    return ENOMEM;
+  
+  for (int i = 0 ; idx < argc ; idx++ , i++)
   {
-     //    size_t  len = strlen(argv[i]);
-    
+    int rc = to_addr_port(&g_hosts[i],argv[idx]);
+    if (rc != 0)
+    {
+      fprintf(stderr,"%s: %s\n",argv[idx],strerror(rc));
+      return rc;
+    }
   }
+  
   if(o->debug > 0) print_enabled_options(o, stderr);
   return 0;
 }
@@ -221,5 +343,46 @@ int main(int argc, char **argv) {
   if (finish_setup(&options,host_count,argc,argv) != 0)
     return EXIT_FAILURE;
 
+  for (size_t i = 0 ; i < g_numhosts ; i++)
+  {
+    char tipv4[INET_ADDRSTRLEN];
+    char tipv6[INET6_ADDRSTRLEN];
+    
+    switch(g_hosts[i].sa.sa_family)
+    {
+      case AF_INET:
+           printf(
+           	"%3d: IPv4 %s:%d\n",
+           	i,
+           	inet_ntop(
+           		AF_INET,
+           		&g_hosts[i].sin.sin_addr.s_addr,
+           		tipv4,
+           		INET_ADDRSTRLEN
+           	),
+           	ntohs(g_hosts[i].sin.sin_port)
+           );
+           break;
+           
+      case AF_INET6:
+           printf(
+           	"%3d: IPv6 [%s]:%d\n",
+           	i,
+           	inet_ntop(
+           		AF_INET6,
+           		&g_hosts[i].sin6.sin6_addr.s6_addr,
+           		tipv6,
+           		INET6_ADDRSTRLEN
+           	),
+           	ntohs(g_hosts[i].sin6.sin6_port)
+           );
+           break;
+           
+      default:
+           assert(0);
+           break;
+    }
+  }
+  
   return(0);
 }
