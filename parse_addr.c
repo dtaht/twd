@@ -1,10 +1,23 @@
-#include <stdlib.h>
+#define _GNU_SOURCE
+
+#include <ctype.h>
+#include <limits.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
+#include <getopt.h>
+#include <errno.h>
+#include <locale.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <string.h>
+#include <assert.h>
+#include <iconv.h>
+#include <malloc.h>
+
 #include "parse_addr.h"
 
 /* the ipv6 separator is a colon. So is the port number. The convention
@@ -43,6 +56,108 @@ int parse_address(AddrPort_t *address)
 	}
 
 	return 0;
+}
+
+int to_port_num(const char *tport)
+{
+  struct servent *presult;
+  struct servent  result;
+  char            tmp[BUFSIZ];
+  
+  /*-------------------------------------------------------------------
+  ; assume a port number, not a name.  Hopefully, no port names start
+  ; with a digit.
+  ;--------------------------------------------------------------------*/
+  
+  if (isdigit(*tport))
+  {
+    unsigned long  port;
+    char          *p;
+    
+    errno = 0;
+    port  = strtoul(tport,&p,10);
+    if ((errno != 0) || (port > USHRT_MAX) || (p == tport))
+      return -1;
+    return port;
+  }
+  
+  if (getservbyname_r(tport,"udp",&result,tmp,sizeof(tmp),&presult) != 0)
+    return -1;
+
+  return ntohs((short)result.s_port);
+}
+
+int to_addr_port(
+	sockaddr__u *restrict sockaddr,
+	const char  *restrict addrport
+)
+{
+  assert(sockaddr != NULL);
+  assert(addrport != NULL);
+  
+  size_t  len = strlen(addrport);
+  char    ipaddr[len + 1];
+  char   *tport;
+  int     port;
+
+  memcpy(ipaddr,addrport,len + 1);
+
+  /*--------------------------------------------------------------------
+  ; We search backwards through the string, instead of forwards, because
+  ; IPv6 addresses has embedded colons (but are embedded in brackets, with
+  ; the port outside the brackets.  It will look like:
+  ;
+  ;	[fc00::1]:2222
+  ;
+  ;-----------------------------------------------------------------------*/
+
+  tport = memrchr(ipaddr,':',len);
+  if (tport == NULL)
+    return EINVAL;
+  
+  *tport++ = '\0';
+  
+  port = to_port_num(tport);
+  if (port < 0)
+    return EINVAL;
+  
+  /*--------------------------------------------------------------------
+  ; if the first character of the addrport is a bracket, this is an IPv6
+  ; address.  Using a hack, if the two characters previous to the port text
+  ; is NOT a closing bracket, we return an error, otherwise, we NUL out the
+  ; closing bracket, and skip the addrport pointer past the opening bracket,
+  ; thus leaving us with a straight IPv6 address.
+  ;-------------------------------------------------------------------------*/
+  
+  if (ipaddr[0] == '[')
+  {
+    if (tport[-2] != ']')
+      return EINVAL;
+    tport[-2] = '\0';
+    memmove(ipaddr,&ipaddr[1],len);
+    
+    if (inet_pton(AF_INET6,ipaddr,sockaddr->sin6.sin6_addr.s6_addr))
+    {
+      sockaddr->sin6.sin6_family = AF_INET6;
+      sockaddr->sin6.sin6_port   = htons(port);
+      return 0;
+    }
+  }
+  
+  /*--------------------------------------------------------------------
+  ; else assume we have an IPv4 address and carry on.
+  ;--------------------------------------------------------------------*/
+  
+  else
+  {
+    if (inet_pton(AF_INET,ipaddr,&sockaddr->sin.sin_addr.s_addr))
+    {
+      sockaddr->sin.sin_family = AF_INET;
+      sockaddr->sin.sin_port   = htons(port);
+      return 0;
+    }
+  }
+  return EINVAL;
 }
 
 #ifdef TEST
