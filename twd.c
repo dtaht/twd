@@ -47,7 +47,7 @@ int usage (char *err) {
 	 "    -L --logdir        log directory [default .]\n"
 	 "    -l --length        length of test [default 300ms]\n"
 	 "    -s --size          packet size [default 240 + headers] \n"
-	 "    -S --server        server mode\n"
+	 "    -S --server        server mode [no default]\n"
 	 "    -P --passfail      report pass/fail only\n"
 	 "    -e --ecn           enable ecn on all tests\n"
 	 "    -d --diffserv      [value] \n"
@@ -77,7 +77,7 @@ static const struct option long_options[] = {
   { "verbose"		, no_argument		, NULL , 'v' } ,
   { "length"		, required_argument    	, NULL , 'l' } ,
   { "logdir"		, required_argument	, NULL , 'L' } ,
-  { "server"		, no_argument		, NULL , 'S' } ,
+  { "server"		, required_argument	, NULL , 'S' } ,
 
   { "dontfork"		, no_argument		, NULL , 'F'  } ,
   { "up"		, no_argument		, NULL , '1' } ,
@@ -126,62 +126,6 @@ print_enabled_options(TWD_Options_t *o, FILE *fp) {
   penableds(logdir);
   fprintf(fp,"\n");
   return 0;
-}
-
-#define QSTRING "i:D:s:l:L:o:m:w:sh?Pv12346FeCTt"
-
-int process_options(int argc, char **argv, TWD_Options_t *o)
-{
-  int	    option_index;
-  int	    opt;
-
-  option_index = 0;
-  opt	    = 0;
-  optind	 = 1;
-
-  while(true)
-  {
-    opt = getopt_long(argc, argv,
-			QSTRING,
-			long_options, &option_index);
-    if(opt == -1) break;
-
-    switch (opt)
-    {
-	case 'S': o->server = 1;  break;
-	case 'D': o->debug = strtoul(optarg,NULL,10); break;
-	case 'F': o->dontfork = 1; break;
-	case 'h':
-	case '?': usage(NULL); break;
-	case 'i': o->interval = strtoul(optarg,NULL,10); break;
-	case 's': o->packet_size = strtoul(optarg,NULL,10); break;
-	case 'l': o->length = strtoul(optarg,NULL,10); break;
-	case 'L': o->logdir = optarg; break;
-	case 'o':
-	     for(int i = 0; output_type[i].desc != NULL; i++)
-	    if(strcmp(output_type[i].desc,optarg) == 0)
-		o->format = output_type[i].id;
-	     break;
-	case 'P': o->passfail = 1; break;
-	case 'v': o->verbose = 1; break;
-
-	case '1': o->up = 1; break;
-	case '2': o->dn = 1; break;
-	case '3': o->up = 1; o->dn = 1; break;
-	case 'w': o->filename = optarg; break; 
-	case '@': o->test_self = 1; break; 
-	case 't': o->test_owd = 1; break; 
-	case 'E': o->test_ecn = 1; break; 
-	case 'C': o->test_diffserv = 1; break; 
-	case 'T': o->test_all = 1; break; 
-	case 'e': o->ecn = 1; break; 
-	case 'd': o->diffserv = parse_ipqos(optarg); break; 
-
-	default: fprintf(stderr,"%d",opt); usage("Invalid option"); break;
-    }
-  }
-
-  return optind;
 }
 
 int to_port_num(const char *tport)
@@ -284,6 +228,72 @@ int to_addr_port(
     }
   }
   return EINVAL;
+}
+
+#define QSTRING "S:i:D:s:l:L:o:m:w:sh?Pv12346FeCTt"
+
+int process_options(int argc, char **argv, TWD_Options_t *o)
+{
+  int	    option_index;
+  int	    opt;
+  int       rc;
+  
+  option_index = 0;
+  opt	    = 0;
+  optind	 = 1;
+
+  while(true)
+  {
+    opt = getopt_long(argc, argv,
+			QSTRING,
+			long_options, &option_index);
+    if(opt == -1) break;
+
+    switch (opt)
+    {
+	case 'S': 
+	     o->server = 1;
+	     rc = to_addr_port(&o->server_address,optarg);
+	     if (rc != 0)
+	     {
+	       fprintf(stderr,"%s: invalid address\n",optarg);
+	       exit(EXIT_FAILURE);
+	     }
+	     break;
+	     
+	case 'D': o->debug = strtoul(optarg,NULL,10); break;
+	case 'F': o->dontfork = 1; break;
+	case 'h':
+	case '?': usage(NULL); break;
+	case 'i': o->interval = strtoul(optarg,NULL,10); break;
+	case 's': o->packet_size = strtoul(optarg,NULL,10); break;
+	case 'l': o->length = strtoul(optarg,NULL,10); break;
+	case 'L': o->logdir = optarg; break;
+	case 'o':
+	     for(int i = 0; output_type[i].desc != NULL; i++)
+	    if(strcmp(output_type[i].desc,optarg) == 0)
+		o->format = output_type[i].id;
+	     break;
+	case 'P': o->passfail = 1; break;
+	case 'v': o->verbose = 1; break;
+
+	case '1': o->up = 1; break;
+	case '2': o->dn = 1; break;
+	case '3': o->up = 1; o->dn = 1; break;
+	case 'w': o->filename = optarg; break; 
+	case '@': o->test_self = 1; break; 
+	case 't': o->test_owd = 1; break; 
+	case 'E': o->test_ecn = 1; break; 
+	case 'C': o->test_diffserv = 1; break; 
+	case 'T': o->test_all = 1; break; 
+	case 'e': o->ecn = 1; break; 
+	case 'd': o->diffserv = parse_ipqos(optarg); break; 
+
+	default: fprintf(stderr,"%d",opt); usage("Invalid option"); break;
+    }
+  }
+
+  return optind;
 }
     
 int finish_setup(TWD_Options_t *o,int idx,int argc,char **argv __attribute__((unused)))

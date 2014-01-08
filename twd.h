@@ -52,6 +52,7 @@ struct twd_options {
   char *logdir;
   char *filename;
   char **hosts;
+  sockaddr__u server_address;
 };
 
 typedef struct twd_options TWD_Options_t;
