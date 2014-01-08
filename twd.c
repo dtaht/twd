@@ -35,7 +35,7 @@ size_t       g_numhosts;
 int usage (char *err) {
   if(err) fprintf(stderr,"%s\n",err);
   printf("twd [options] addr [addr:port...]\n");
-  printf("twd [options] -s [addr:port...]\n");
+  printf("twd [options] -S [addr:port...]\n");
   printf(
 	 "    -D --debug     X   debug output level\n"
 	 "    -v --verbose       provide more verbose insight\n"
