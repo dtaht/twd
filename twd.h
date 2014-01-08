@@ -8,6 +8,10 @@
 #endif
 
 #define MAX_MTU 1280
+#define TWD_DEFAULT_INTERVAL (1000*1000*5) /* 5ms */
+#define TWD_DEFAULT_PORT 0 		   /* FIXME Get port from IANA */
+#define TWD_DEFAULT_DURATION (1000*1000*1000*30L) /* 30sec */
+#define TWD_DEFAULT_PACKET_SIZE 200
 
 struct output_type {
   char *desc;
@@ -42,8 +46,8 @@ struct twd_options {
   int debug;
   int packet_size;
   int tests;
-  int length;
-  int interval;
+  unsigned long length;
+  unsigned long interval;
   int diffserv;
   int format;
   char *logdir;

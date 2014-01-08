@@ -106,6 +106,7 @@ static const struct option long_options[] = {
 };
 
 #define penabled(a) if(o->a) fprintf(fp,"" # a " ")
+#define penabledl(a) fprintf(fp,"" # a ":%ld ",o->a)
 #define penabledd(a) fprintf(fp,"" # a ":%d ",o->a)
 #define penableds(a) if(o->a != NULL) fprintf(fp,"" # a ":%s ",o->a)
 
@@ -134,8 +135,8 @@ print_enabled_options(TWD_Options_t *o, FILE *fp) {
   fprintf(fp,"dscp:%s ",iptos2str(o->diffserv));
 
   penabledd(packet_size);
-  penabledd(interval);
-  penabledd(length);
+  penabledl(interval);
+  penabledl(length);
   penabledd(format);
 
   penableds(filename);
@@ -280,7 +281,9 @@ int finish_setup(TWD_Options_t *o,int idx,int argc,char **argv __attribute__((un
 }
 
 static void default_options(TWD_Options_t *q) {
-	q->interval = 1000*1000*10; // 10ms
+	q->interval = TWD_DEFAULT_INTERVAL;
+	q->length = TWD_DEFAULT_DURATION;
+	q->packet_size = TWD_DEFAULT_PACKET_SIZE;
 }
 
 int main(int argc, char **argv) {
