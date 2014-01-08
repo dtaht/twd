@@ -48,6 +48,8 @@ int usage (char *err) {
 	 "       --test-diffserv test diffserv\n"
 	 "       --test-tos      test all tos bits\n"
 	 "       --test-self     test various bits of self\n"
+	 "       --test-fq       test for presence of fair queuing\n"
+	 "       --test-bw       test bandwidth\n"
 	 "    -o --output        [type]\n"
 	 "    -w --write         [filename]\n"
   );
@@ -82,6 +84,8 @@ static const struct option long_options[] = {
   { "test-ecn"		, no_argument		, NULL , 'E' } ,
   { "test-diffserv"	, no_argument		, NULL , 'C' } ,
   { "test-self"		, no_argument		, NULL , '@' } ,
+  { "test-fq"		, no_argument		, NULL , 'Q' } ,
+  { "test-bw"		, no_argument		, NULL , 'B' } ,
   { "test-all"		, no_argument		, NULL , 'T' } ,
 
   { NULL		, 0			, NULL ,  0  }
@@ -102,6 +106,8 @@ print_enabled_options(TWD_Options_t *o, FILE *fp) {
   penabled(test_owd);
   penabled(test_self);
   penabled(test_all);
+  penabled(test_fq);
+  penabled(test_bw);
   penabled(test_ecn);
   penabled(test_diffserv);
   penabled(ecn);
@@ -174,6 +180,8 @@ int process_options(int argc, char **argv, TWD_Options_t *o)
 	case 'E': o->test_ecn = 1; break; 
 	case 'C': o->test_diffserv = 1; break; 
 	case 'T': o->test_all = 1; break; 
+	case 'Q': o->test_fq = 1; break; 
+	case 'B': o->test_bw = 1; break; 
 	case 'e': o->ecn = 1; break; 
 	case 'd': o->diffserv = parse_ipqos(optarg); break; 
 
@@ -185,22 +193,25 @@ int process_options(int argc, char **argv, TWD_Options_t *o)
 }
 
 struct tests_hosts {
-  char hostname[255];
+  AddrPort_t host;
 };
 
 typedef struct tests_hosts TestHosts_t;
 
 int finish_setup(TWD_Options_t *o,int idx,int argc,char **argv)
 {
-  char    string[MAX_MTU];
-  TestHosts_t *hosts_under_tests = (TestHosts_t *) 
-    calloc(1,(idx + 1) * sizeof(TestHosts_t));
+  TestHosts_t *hosts_under_test = (TestHosts_t *) 
+    calloc(1,(argc + 1) * sizeof(TestHosts_t));
+
+  if(o->debug > 0) print_enabled_options(o, stderr);
+  
   for(int i = idx; i < argc; i++)
   {
-    size_t  len = strlen(argv[i]);
-    
+    strcpy(hosts_under_test[i].host.host,argv[i]);
+    parse_address(&hosts_under_test[i].host);
+    printf("testing %s on port %d\n",hosts_under_test[i].host.host,
+	   hosts_under_test[i].host.port);
   }
-  if(o->debug > 0) print_enabled_options(o, stderr);
   return 0;
 }
 

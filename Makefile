@@ -16,14 +16,14 @@ LIBS+=-liconv
 endif
 
 HEADERS=*.h
-COMMON=dscp.c
+COMMON=dscp.c parse_addr.c
 
 DEBUG:=-DDEBUG
 PROGS=twd test_clock
 BINDIR=/usr/local/bin
 OBJECTS=twd.o
 # Note gnu99 lets posix get_time work. c99 doesn't
-CFLAGS += -std=gnu99 -Wall -Wextra -pedantic
+CFLAGS += -O2 -std=gnu99 -Wall -Wextra -pedantic
 STRIP=strip
 
 ifeq "$(PLATFORM)" "Darwin"

@@ -1,6 +1,8 @@
 #ifndef _twd_h
 #define _twd_h
 
+#include "parse_addr.h"
+
 #ifndef __GNUC__
 #  define __attribute__(x)
 #endif
@@ -36,6 +38,8 @@ struct twd_options {
   unsigned int test_tos:1;
   unsigned int test_all:1;
   unsigned int test_self:1;
+  unsigned int test_fq:1;
+  unsigned int test_bw:1;
   unsigned int multicast:1;
   unsigned int server:1;
   int debug;
