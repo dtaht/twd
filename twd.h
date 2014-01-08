@@ -7,6 +7,13 @@
 
 #define MAX_MTU 1280
 
+typedef union
+{
+  struct sockaddr     sa;
+  struct sockaddr_in  sin;
+  struct sockaddr_in6 sin6;
+} sockaddr__u;
+
 extern int parse_ipqos(const char *cp);
 extern const char * iptos2str(int iptos);
 
