@@ -1,0 +1,119 @@
+.PHONY: all clean 
+UNAME := $(shell uname -s)
+
+#######################################################################
+#
+# Make tends to use these variables:
+#
+#	CC	- C compiler to use
+#	CFLAGS	- C flags to compile to object files
+#	LDFLAGS	- flags to the link stage
+#	LDLIBS	- a list of libraries to link against
+#
+# If you define these properly, the the default make rules will "Just Work".
+#
+# --------------------------------------------------------------------------
+# 
+# Systems to compile for.  For each system, you need to specify that which
+# is different from the default make settings.  The code is written to C99,
+# so if your compiler doesn't accept C99 by default, you'll need to define
+# CC in the system specific section.
+#
+# Also, here is where you would define the standard Make variables listed
+# above if they need special values.  
+############################################################################
+
+ifeq ($(UNAME),Linux)
+  CC     = gcc -std=c99
+  CFLAGS = -rdynamic
+  LDLIBS = -ldl
+endif
+
+ifeq ($(UNAME),SunOS)
+  CC = cc -xc99
+  LDLIBS = -ldl -lsocket -lnsl
+endif
+
+ifeq ($(UNAME),FreeBSD)
+  CC     = gcc -std=c99
+  CFLAGS = -rdynamic
+  LDLIBS = -liconv
+endif
+
+ifeq ($(UNAME),Darwin)
+  CFLAGS  = -fno-common
+  LDFLAGS = -dynamiclib
+  LDLIBS  = -ldl -liconv
+endif
+
+###########################################################################
+#
+# Common options for all platforms.  
+#
+# XXX - find a way to detect the use of GCC so we can use -Wall, etc only
+# if GCC is in actual use.
+#
+###########################################################################
+
+CFLAGS += -Wall -Wextra -pedantic
+CFLAGS += -g
+LDLIBS += -lrt
+
+all : test_clock twd
+
+clean :
+	$(RM) -rf *.o *~ test_clock twd
+
+###########################################################################
+#
+# It's a pain, I know.  But I've found that make Just Works if you keep
+# things simple, and LIST ALL THE DEPENDENCIES CORRECTLY!
+#
+# You might be tempted to use makedepend, but no.  It's the path to the Dark
+# Side of the Source.  Sure, it's easy.  But it fails horribly when you have
+# source files in subdirectories.  It fails horribly when you want the object
+# files in a location other than the current working directory.  It fails
+# by directly modifying the Makefile, thus ensuring you'll *ALWAYS* have a 
+# file not tracked by the revision control software, or worse, you'll get
+# some random developer's local changed included in the Makefile.  
+#
+# makedepend is soooooo braindead useless that ... no.  Just no.
+#
+# Track the dependencies by hand.  Sucks, I know.  But it's better that way.
+#
+# Also, you might be tempted to litter subdirectories with their own
+# Makefiles.  If makedepend is bad, that Recursive Makefiles are their Level
+# of Hell, yeah, even below the Ninth Level.  Make can't really deal with
+# recursive Makefiles.  Shame, becuase it would be nice if it could, but
+# sadly, there are multiple versions of make floating out there, and while
+# there may be a version that can handle recusive makes, sadly, I know of
+# none.  
+#
+# So Just Say No to Recursive Makes.  
+#
+# Yes, this makes a huge mondo-Makefile in the top directory, but if it's
+# set up correctly, then verily unto you I say: make -j is a wonderful
+# sight, but be quick to behold, because it is a blindingly *FAST* wonderful
+# sight.  And we all like FAST things, right?
+#
+# But you can't get that if the dependencies are incorrect.  Nor if you use
+# a recursive make.  
+#
+# So yes, this is a pain.  But it's a good pain.
+#
+############################################################################
+
+test_clock : test_clock.o
+twd : twd.o parse_addr.o dscp.o
+
+twd.o : twd.c twd.h dscp.h parse_addr.h
+parse_addr.o : parse_addr.c parse_addr.h
+dscp.o : dscp.c dscp.h
+test_clock.o : test_clock.c
+
+############################################################################
+#
+# Now that wasn't so bad, was it?
+#
+############################################################################
+
