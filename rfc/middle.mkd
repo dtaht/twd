@@ -28,16 +28,24 @@
 ## Response embedded updates
 
 # Protocol Encoding
+
 A TWD packet is sent as the body of a UDP datagram, destined to a well-known multicast address or to a unicast address, over IPv4 or IPv6.  Both the source and destination UDP port are set to a user specified port number.  After registration a TWD packet MUST be silently ignored unless it matches a previously known nonce and negotiated sequence number range.
  
 TWD packets MUST NOT be sent as IPv6 Jumbograms.
+
 ## Data Types
 
-### Interval
+### Timestamp
+
 Times are carried as 64-bit values specifying a number of seconds since the Epoch.
 This should cover all reasonable applications of twd.
 
 ### Timediff
+
+A timediff is a 30 bit number in nanoseconds since the previous timestamp in this
+packet.
+
+The final two bits indicate ECN seen (ECT(3)), and Loss.
 
 ### Challenge
 
@@ -45,12 +53,20 @@ This should cover all reasonable applications of twd.
 
 ### Nonce
 
+The nonce is a 64 bit integer derived from the challenge/response pair, and
+used in all subsequent communications between a test client and server.
+
+The server SHOULD endevour that this be randomly generated, and that all concurrently
+running tests use a unique nonce.
+
 ### Sequence Number (seqno)
 The seqno is a 32 bit value starting at a negotiated point. It can wrap.
 
+FIXME: we COULD use encrypted seqnos but I dislike the overhead.
+
 ### Address
 
-Multiple waysof encoding addresses are defined.  Additionally, a
+Multiple ways of encoding addresses are defined.  Additionally, a
 common subnet prefix may be omitted when multiple addresses are sent
 in a single packet -- this is known as address compression [PACKETBB].
 
@@ -67,6 +83,10 @@ o  AE 3: link-local IPv6 address.  The value is 8 octets long, a
 
 The address family of an address is either IPv4 or IPv6; it is
 undefined for AE 0, IPv4 for AE 1, and IPv6 for AE 2 and 3.
+
+FIXME: It doesn't look like address compression will help much,
+and having separate TLVs for ipv4 and ipv6 will be shorter than
+folding 4 into 6.
 
 ### Test Number
 
@@ -182,12 +202,22 @@ With the exception of Pad1, all TLVs have the following structure:
 
    This TLV can be silently ignored on reception.
 
+### Nonce
+
+0                   1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  Type = 3     |     Length      |       Nonce                 |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
 ### Time
 
 0                   1                   2                   3
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|  Type = 3     |     Length      |       Absolute time         |
+|  Type = 4     |     Length      |       Absolute time         |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                                                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -203,14 +233,14 @@ of message it is sent in.
 
    Fields :
 
-   Type set to 2 to indicate an Origin Time option.
+   Type set to 4 to indicate an Origin Time option.
 
 ### Register
 
 0                   1                   2                   3
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|  Type = 4     |     Length      |       Challenge             |
+|  Type = 5     |     Length      |       Challenge             |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -221,7 +251,7 @@ of message it is sent in.
 0                   1                   2                   3
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|  Type = 5     |     Length      |       Response              |
+|  Type = 6     |     Length      |       Response              |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -232,7 +262,7 @@ of message it is sent in.
 0                   1                   2                   3
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|  Type = 6     |     Length      |       Challenge             |
+|  Type = 7     |     Length      |       Challenge             |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -242,7 +272,7 @@ of message it is sent in.
 0                   1                   2                   3
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|  Type = 7     |     Length      |       Response              |
+|  Type = 8     |     Length      |       Response              |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -255,7 +285,7 @@ the other stream.
 0                   1                   2                   3
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|  Type = 8     |     Length      |       testno                |
+|  Type = 9     |     Length      |       testno                |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |  seqno                                  			            |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -276,16 +306,6 @@ the other stream.
    1 bit L for lost
 
 FIXME: probably use the separate timestamp stanza
-
-### Nonce
-
-0                   1                   2                   3
-0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|  Type = 9     |     Length      |       Nonce                 |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                               |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 ### CPU
 
@@ -312,6 +332,19 @@ FIXME: probably use the separate timestamp stanza
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |  timediff...       					                    | EL|
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+### TosRecord
+
+0                   1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  Type = 12     |     Length      |       Response             |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  seqno                                  			            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  TOS...        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
 
 ### CloseWait
 
