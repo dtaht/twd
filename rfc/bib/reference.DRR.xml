@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+
+<reference anchor='DRR'>
+<front>
+<title>Efficient Fair Queueing Using Deficit Round Robin</title>
+<author initials='M.' surname='Shreedhar' fullname='M. Shreedhar'>
+<organization /></author>
+<author initials='G.' surname='Varghese' fullname='George Varghese'>
+<organization /></author>
+<date year='1996' month='June' />
+<abstract>
+<t>
+(FIXME need IEEE/ACM TRANSACTIONS ON NETWORKING VOL 4, NO. 3 in here somehow above), and Member, IEEE
+Fair Queuing is a technique that allows each flow passing through a network device to have a fair share of network resources. Previous schemes for fair queueinng that achieved nearly perfect fairness were expensive to implement; specificly the work required to process a packet in these schemes was O(log(n)) where n is the number of active flows.
+</t>
+<t>
+Deficit Round Robin achieves near perfect fairness, requires only O(1) work to process a packet and is simple enough to implement in hardware.
+</t></abstract></front>
+
+<seriesInfo name='PUB' value='DRR' />
+<format type='PDF' octets='1101478' target='http://users.ece.gatech.edu/~siva/ECE4607/presentations/DRR.pdf' />
+</reference>

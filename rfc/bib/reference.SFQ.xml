@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8'?>
+
+<reference anchor='SFQ'>
+<front>
+<title>Stochastic Fairness Queuing</title>
+<author initials='P.E.' surname='McKenney' fullname='Paul E. McKenney'>
+<organization /></author>
+<date year='1992' month='September' />
+<abstract>
+<t>
+This paper presents a class of algorithms collectively called stochastic fairness queueing that are probilistic variants of fair queuing. These algorithms do not require an exact mapping and thus are suitable for high-speed software or firmware implementations. Furthermore these algorithms represent a broad range of CPU, memory, and fairness tradeoffs.
+</t></abstract></front>
+
+<seriesInfo name='PUB' value='SFQ' />
+<format type='PDF' octets='' target='http://www2.rdrop.com/~paulmck/scalability/paper/sfq.2002.06.04.pdf' />
+</reference>
