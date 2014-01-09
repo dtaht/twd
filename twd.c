@@ -106,7 +106,7 @@ static const struct option long_options[] = {
 };
 
 #define penabled(a) if(o->a) fprintf(fp,"" # a " ")
-#define penabledl(a) fprintf(fp,"" # a ":%ld ",o->a)
+#define penabledl(a) fprintf(fp,"" # a ":%lld ",(long long)o->a)
 #define penabledd(a) fprintf(fp,"" # a ":%d ",o->a)
 #define penableds(a) if(o->a != NULL) fprintf(fp,"" # a ":%s ",o->a)
 
