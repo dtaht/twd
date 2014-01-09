@@ -170,11 +170,54 @@ With the exception of Pad1, all TLVs have the following structure:
 
    This TLV can be silently ignored on reception.
 
+### Time
+
+0                   1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  Type = 3     |     Length      |       Absolute time         |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+The Origin Time option specifies the time, encoded as a number of
+seconds since 00:00:00, 1 January 1970 UTC, at which this message was
+originated. It needn't be synced to ntp.
+
+This option is unusual in that it has the same meaning whatever kind
+of message it is sent in.
+
+   Fields :
+
+   Type set to 2 to indicate an Origin Time option.
+
 ### Register
 
 ### CounterProposal
 
 ### Probe
+
+### Last Seen
+
+The Last Seen stanza reports the most recently seen packets on the incoming
+stream. 
+0                   1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  Type = 8     |     Length      |       testno                |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  timestamp                                                    |                               
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  seqno                                  			|
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  timediff	           					|
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  seqno                                  			|
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  timediff...           					|
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+note if this will be in ns, 16 bits is not enough.
 
 ### Acknowledgement
 
