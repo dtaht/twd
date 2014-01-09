@@ -11,7 +11,7 @@
 #define MAX_MTU 1280
 #define TWD_DEFAULT_INTERVAL (1000*1000*5) /* 5ms */
 #define TWD_DEFAULT_PORT 0 		   /* FIXME Get port from IANA */
-#define TWD_DEFAULT_DURATION (1000LL * 1000LL * 1000LL * 30LL) /* 30sec */
+#define TWD_DEFAULT_DURATION (1000uLL * 1000uLL * 1000uLL * 30uLL) /* 30sec */
 #define TWD_DEFAULT_PACKET_SIZE 200
 
 struct output_type {
