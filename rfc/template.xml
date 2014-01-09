@@ -8,7 +8,7 @@
 <!ENTITY pandocRefSFQ  PUBLIC '' 'bib/reference.SFQ.xml'>
 ]>
 
-<rfc ipr="trust200902" category="info" docName="draft-taht-twd-00">
+<rfc ipr="trust200902" category="experimental" docName="draft-taht-twd-00">
  <front>
         <title abbrev="TWD">Two Way Delay measurements</title>
 
@@ -33,7 +33,7 @@
 
         <date month="January" year="2014"/>
 
-        <area>General</area>
+        <area>Independent submission</area>
         <workgroup>IPPM working group</workgroup>
         <keyword>RFC</keyword>
         <keyword>Request for Comments</keyword>
