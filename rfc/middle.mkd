@@ -7,7 +7,179 @@
 <?rfc compact="yes"?>
 <?rfc comments="yes"?>
 
-# Conventions
+## Features
+
+## Limitations
+
+## Specification of Requirements 
+
+# Conceptual Description of the Protocol
+
+# Protocol Operation
+
+## Message Transmission and Reception 
+
+## Data Structures
+
+## Acknowledged Packets
+
+## NAT Punching
+
+## Response embedded updates
+
+# Protocol Encoding
+A TWD packet is sent as the body of a UDP datagram, destined to a well-known multicast address or to a unicast address, over IPv4 or IPv6.  Both the source and destination UDP port are set to a user specified port number.  After registration a TWD packet MUST be silently ignored unless it matches a previously known nonce and negotiated sequence number range.
+ 
+TWD packets MUST NOT be sent as IPv6 Jumbograms.
+## Data Types
+
+### Interval
+Times are carried as 64-bit values specifying a number of nanoseconds since the Epoch. This should cover all reasonable applications of twd.
+
+### Sequence Number (seqno)
+The seqno is a 32 bit value starting at a negotiated point. It can wrap.
+
+### Address
+
+Since the bulk of the protocol is taken by addresses, multiple ways
+of encoding addresses are defined.  Additionally, a common subnet
+prefix may be omitted when multiple addresses are sent in a single
+packet -- this is known as address compression [PACKETBB].
+
+Address encodings:
+
+o  AE 0: wildcard address.  The value is 0 octets long.
+
+o  AE 1: IPv4 address.  Compression is allowed. 4 octets or less.
+
+o  AE 2: IPv6 address.  Compression is allowed. 16 octets or less.
+
+o  AE 3: link-local IPv6 address.  The value is 8 octets long, a
+      prefix of fe80::/64 is implied.
+
+The address family of an address is either IPv4 or IPv6; it is
+undefined for AE 0, IPv4 for AE 1, and IPv6 for AE 2 and 3.
+
+### Test Number
+
+## Packet Format 
+
+A TWD packet consists of a 4-octet header, followed by a sequence
+of TLVs.
+
+0                   1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     Magic     |    Version    |        Body length            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|   Packet Body ...
++-+-+-+-+-+-+-+-+-+-+-+-+-
+
+Fields :
+
+   Magic     The arbitrary but carefully chosen value 84 (decimal);
+             packets with a first octet different from 84 MUST be
+             silently ignored.
+
+   Version   This document specifies version 0 of the TWD protocol.
+             Packets with a second octet different from 0 MUST be
+             silently ignored.
+
+   Body length  The length in octets of the body following the packet
+                header.
+
+   Body      The packet body; a sequence of TLVs.
+
+   Any data following the body MUST be silently ignored.
+
+## TLV Format
+
+With the exception of Pad1, all TLVs have the following structure:
+
+0                   1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     Type      |    Length     |     Body...
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
+   Fields :
+
+   Type      The type of the TLV.
+
+   Length    The length of the body, exclusive of the Type and Length
+             fields.  If the body is longer than the expected length of
+             a given type of TLV, any extra data MUST be silently
+             ignored.
+
+   Body      The TLV body, the interpretation of which depends on the
+             type.
+
+   TLVs with an unknown type value MUST be silently ignored.
+
+## Details of Specific TLVs
+
+### Pad1
+
+   0
+   0 1 2 3 4 5 6 7
+   +-+-+-+-+-+-+-+-+
+   |   Type = 0    |
+   +-+-+-+-+-+-+-+-+
+
+   Fields :
+
+   Type      Set to 0 to indicate a Pad1 TLV.
+
+   This TLV is silently ignored on reception.
+
+### PadN
+
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Type = 1   |    Length     |      MBZ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
+   Fields :
+
+   Type      Set to 1 to indicate a PadN TLV.
+
+   Length    The length of the body, exclusive of the Type and Length
+             fields.
+
+   MBZ       Set to 0 on transmission.
+
+   This TLV is silently ignored on reception.
+
+### RandN
+
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Type = 2   |    Length     |      MBZ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
+   Fields :
+
+   Type      Set to 2 to indicate a RandN TLV.
+
+   Length    The length of the body, exclusive of the Type and Length
+             fields.
+
+   MBZ       Set to random bytes on transmission.
+
+   This TLV can be silently ignored on reception.
+
+### Register
+
+### CounterProposal
+
+### Probe
+
+### Acknowledgement
+
+### Close
+
 
 # Implementation considerations
 
