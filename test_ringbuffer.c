@@ -27,7 +27,9 @@ typedef struct acks ack_t;
 const char SUCCESS[] = "SUCCESS";
 const char FAIL[] = "FAIL";
 
-ack_t test_data_struct[TWD_RINGBUFFER_SIZE * 4] = {0};
+#define TEST_LOOPS (1024 * TWD_RINGBUFFER_SIZE)
+
+ack_t test_data_struct[TEST_LOOPS] = {0};
 
 static int test_basic(ringbuffer__s *rbuf) {
   int a, b, c;
@@ -106,6 +108,8 @@ struct test_control {
   int thread_num;      /* Application-defined thread # */
   ringbuffer__s *ringbuf;
 
+  cpu_set_t cpus;
+
   size_t fd;
   size_t cookie;
   size_t seqno_start;
@@ -118,19 +122,23 @@ thread_reader(void *arg)
 {
   struct test_control *tinfo = arg;
   int count;
+  int seqnums = 0;
   ack_t a;
   printf("Reader started\n");
   while(!(count = ringbuffer_read(tinfo->ringbuf,&a,sizeof(a))))
     sched_yield();
   if(count != sizeof(a)) { printf("TRUNCATED READ\n"); exit(-1); }
   while(a.flags != 1) {
-    printf("Seqnum: %d; flags: %d\n", a.seqnum, a.flags);
+    //    going quiet for a test
+    //    printf("Seqnum: %d; flags: %d\n", a.seqnum, a.flags);
+    if (a.seqnum != seqnums) 
+      printf ("missing seqno expect %d got %d\n", seqnums, a.seqnum);
+    seqnums++;
     while(!(count = ringbuffer_read(tinfo->ringbuf,&a,sizeof(a))))
       sched_yield();
     if(count != sizeof(a)) { printf("TRUNCATED READ\n"); exit(-1); }
   }
   printf("Done reading!\n");
-  sleep(1);
   return SUCCESS;
 }
 
@@ -142,7 +150,7 @@ thread_writer(void *arg)
   int count = 0;
   printf("Writer started\n");
   // starts getting rescheduled around 962 entries
-  for(i = 0; i<2*TWD_RINGBUFFER_SIZE-1; i++) { 
+  for(i = 0; i<TEST_LOOPS-1; i++) { 
     test_data_struct[i].seqnum = i;
     test_data_struct[i].flags = 0;
     // and if you call it with this enabled it never hits the lock so
@@ -164,7 +172,6 @@ thread_writer(void *arg)
     }
   printf("Done writing!\n");
   fflush(stdout);
-  sleep(1);
   return SUCCESS;
 }
 
@@ -179,14 +186,18 @@ static int test_pthread1(ringbuffer__s *rbuf) {
 
   cpu_set_t set;
 
-//  int proc;
+//  FIXME, setup the cpu stuff via the control structs
+//  and the correct pthread stuff
+//  A good test will make sure things are on different cores
   CPU_ZERO( &set );
   CPU_SET( 1, &set );
+  if(0) {
   if (sched_setaffinity( getpid(), sizeof( cpu_set_t ), &set ))
     {
       perror( "sched_setaffinity" );
       return NULL;
     }
+  }
 
   /* Allocate memory for pthread_create() arguments in c99 */
   {
@@ -217,8 +228,6 @@ static int test_pthread1(ringbuffer__s *rbuf) {
     	   (i == SCHED_RR)    ? "SCHED_RR" :
     	   "???");
 
-    printf("Got here\n");
- 
     tinfo[0].thread_num = 1;
     printf("Starting thread %d\n", 1);
 
@@ -231,7 +240,7 @@ static int test_pthread1(ringbuffer__s *rbuf) {
 			   &thread_reader, &tinfo[0])) != 0)
       handle_error_en(s, "pthread_create");
     
-    sleep(1);
+    //    sleep(1);
     tinfo[1].thread_num = 2;
     printf("Starting thread %d\n", 2);
     
