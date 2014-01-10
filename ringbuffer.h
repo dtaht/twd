@@ -1,5 +1,5 @@
-#ifndef _ringbuffer_h
-#define _ringbuffer_h
+#ifndef _TWD_RINGBUFFER_H
+#define _TWD_RINGBUFFER_H
 
 #define _GNU_SOURCE
 
