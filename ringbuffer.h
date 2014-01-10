@@ -36,4 +36,6 @@ size_t ringbuffer_read(
 		       );
 int ringbuffer_destroy(ringbuffer__s *const rbuf);
 int ringbuffer_reset(ringbuffer__s *const buff);
+size_t ringbuffer_used(ringbuffer__s *const restrict rbuf);
+size_t ringbuffer_peek(ringbuffer__s *const restrict rbuf);
 #endif

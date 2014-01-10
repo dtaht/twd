@@ -144,8 +144,14 @@ int ringbuffer_init(ringbuffer__s *const buff,size_t size)
 
 /************************************************************************/  
 
-size_t ringbuffer_used(
-		       ringbuffer__s *const restrict rbuf)
+size_t ringbuffer_peek(ringbuffer__s *const restrict rbuf)
+{
+  return (rbuf->size - (rbuf->widx - rbuf->ridx));
+}
+
+/************************************************************************/  
+
+size_t ringbuffer_used(ringbuffer__s *const restrict rbuf)
 {
   return (rbuf->widx - rbuf->ridx);
 }
