@@ -208,9 +208,9 @@ int ringbuffer_reset(ringbuffer__s *const buff)
       buff->used = 0;
       buff->ridx = 0;
       buff->widx = 0;
-      return(EXIT_SUCCESS)
+      return(EXIT_SUCCESS);
     }
-  return(EXIT_FAIL);
+  return(EXIT_FAILURE);
 }
 
 /************************************************************************/
