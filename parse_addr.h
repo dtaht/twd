@@ -1,7 +1,5 @@
-#ifndef _parse_addr_h
-#define _parse_addr_h
-// FIXME find max hostname size 
-#define MAX_HOSTNAME 255
+#ifndef TWD_PARSE_ADDR_H
+#define TWD_PARSE_ADDR_H
 
 struct addrport {
 	int port;
