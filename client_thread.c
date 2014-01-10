@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <pthread.h>
 #include <string.h>
 #include <stdio.h>
@@ -5,6 +7,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <ctype.h>
+#include "ringbuffer.h"
 
 #define handle_error_en(en, msg) \
   do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
@@ -15,6 +18,7 @@
 struct test_control {
   pthread_t thread_id; /* ID returned by pthread_create() */
   int thread_num;      /* Application-defined thread # */
+  queue_t *ringbuf;
 
   size_t fd;
   size_t cookie;
@@ -28,10 +32,49 @@ struct test_control {
 
 const char uargv[] = "WTF";
 
+struct acks {
+  long long timestamp;
+  int seqnum;
+  int flags;
+};
+
+typedef struct acks ack_t;
+
+ack_t test_data_struct[1024] = {0};
+
 static void *
-thread_start(void *arg)
+thread_reader(void *arg)
 {
   struct test_control *tinfo = arg;
+  ack_t *a;
+  //   while(tinfo->ringbuf->readPos == tinfo->ringbuf->writePos) pthread_yield();
+  while(!(a = ring_dequeue(tinfo->ringbuf))) pthread_yield();
+  while(a->flags != 1) {
+    printf("Seqnum: %ld; flags: %d\n", a->seqnum, a->flags);
+    while(!(a = ring_dequeue(tinfo->ringbuf))) pthread_yield();
+  }
+  printf("Done reading!\n");
+  
+  return uargv;
+}
+
+static void *
+thread_writer(void *arg)
+{
+  struct test_control *tinfo = arg;
+  int i;
+  for(i = 0; i<256; i++) { 
+    test_data_struct[i].seqnum = i;
+    test_data_struct[i].flags = 0;
+    if(!ring_enqueue(tinfo->ringbuf,&test_data_struct[i])) {
+      pthread_yield();
+    }
+  }
+  printf("Done writing i!\n");
+  test_data_struct[i].seqnum = i;
+  test_data_struct[i].flags = 1;
+  while(!ring_enqueue(tinfo->ringbuf,&test_data_struct[i])) pthread_yield();
+  printf("Done writing!\n");
   return uargv;
 }
 
@@ -60,7 +103,7 @@ main(int argc, char *argv[])
     }
   }
   
-  num_threads = argc - optind;
+  num_threads = 2;
 
   /* Allocate memory for pthread_create() arguments in c99 */
 
@@ -101,9 +144,14 @@ main(int argc, char *argv[])
 	
 	/* The pthread_create() call stores the thread ID into
 	   corresponding element of tinfo[] */
-	
+
+	tinfo[0].ringbuf = tinfo[1].ringbuf = ring_createQueue(64);
+	  
 	if((s = pthread_create(&tinfo[tnum].thread_id, &attr,
-			       &thread_start, &tinfo[tnum])) != 0)
+			       &thread_writer, &tinfo[tnum])) != 0)
+	  handle_error_en(s, "pthread_create");
+  	if((s = pthread_create(&tinfo[tnum].thread_id, &attr,
+			       &thread_reader, &tinfo[tnum])) != 0)
 	  handle_error_en(s, "pthread_create");
       }
   
@@ -121,6 +169,8 @@ main(int argc, char *argv[])
 	
 	printf("Joined with thread %d; returned value was %s\n",
 	       tinfo[tnum].thread_num, (char *) res);
+	//	ring_destroyQueue(tinfo[1].ringbuf);
+	// tinfo[0].ringbuf = 0;
 	//	if(res != NULL) free(res); result is a constant currently
 	//	we will return test results instead after processing
       }
