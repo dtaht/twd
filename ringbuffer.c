@@ -147,7 +147,34 @@ int ringbuffer_init(ringbuffer__s *const buff,size_t size)
 size_t ringbuffer_used(
 		       ringbuffer__s *const restrict rbuf)
 {
-  return(rbuf->widx - rbuf->ridx);
+  return (rbuf->widx - rbuf->ridx);
+}
+
+/* Just left this in here because I don't trust the "used" change. 
+   This locks up at 4096 and 8192 */
+
+size_t old_ringbuffer_used(
+		       ringbuffer__s *const restrict rbuf)
+{
+  size_t size = rbuf->size;
+  size_t widx = rbuf->widx;
+  size_t ridx = rbuf->ridx;
+  long temp = 0;
+
+  switch( ( (widx > size) << 1) | (ridx > size) )
+  {
+  case 0: /* if they both are on the same page just do the math */
+  case 3: temp = widx - ridx; break;
+  case 1: temp = widx - (ridx - size); break;
+  case 2: temp = ridx - (widx - size); break;
+  }
+
+  if(temp < 0) { 
+    temp = -temp; 
+    //printf ("Temp: %d\n", temp); 
+  }
+  return(temp); 
+
 }
 
 /************************************************************************/  
@@ -190,15 +217,20 @@ size_t ringbuffer_read(
   if (used > 0)
   {
     size_t len = min_size_t(used,amount);
-    size_t temp; 
+    volatile size_t temp; 
+    size_t temp2;
+    size_t temp3;
+
     memcpy(dest,&rbuf->address[rbuf->ridx],len);
     rbuf->ridx += len;
 
     if (rbuf->ridx > size)
     {
-      do
-      temp = rbuf->widx - size;
-      while(!atomic_compare_and_swap(&rbuf->widx,rbuf->widx,temp)) ;
+      do {
+       	temp3 = temp = __atomic_load_n(&rbuf->widx, __ATOMIC_ACQUIRE); // atomic_read()?
+	temp2 = temp - size;
+      }
+      while((temp3 = atomic_compare_and_swap(&rbuf->widx,temp,temp2)) != temp) ;
       rbuf->ridx -= size;
     }
     return len;
