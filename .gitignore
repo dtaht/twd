@@ -2,6 +2,7 @@
 *~
 twd
 test_clock
+test_ringbuffer
 *.o
 CMakeCache.txt
 CMakeFiles/
