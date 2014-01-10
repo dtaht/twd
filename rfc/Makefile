@@ -1,16 +1,19 @@
-all:	draft.html draft.xml draft.txt
+title=draft-taht-twd-00
+objects=$(title).html $(title).xml $(title).txt
+
+all: $(title).html $(title).xml $(title).txt
 
 FILES=back.mkd middle.mkd template.xml
 
-draft.txt: $(FILES)
+$(title).txt: $(FILES)
 	bash pandoc2rfc -t template.xml -x transform.xsl -T back.mkd middle.mkd 
 
-draft.html: $(FILES)
-	bash pandoc2rfc -t template.xml -x transform.xsl -M back.mkd middle.mkd 
+$(title).html: $(FILES)
+	bash pandoc2rfc -t template.xml -x transform.xsl -H back.mkd middle.mkd 
 
-draft.xml: $(FILES)
+$(title).xml: $(FILES)
 	bash pandoc2rfc -t template.xml -x transform.xsl -X back.mkd middle.mkd 
 
 .PHONY: clean
 clean:
-	rm -f draft.txt draft.xml draft.html
+	rm -f $(objects)
