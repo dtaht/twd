@@ -44,6 +44,7 @@ struct twd_options {
   uint32_t test_self:1;
   uint32_t test_fq:1;
   uint32_t test_bw:1;
+  uint32_t inetd:1;	/* no command line option---set automatically */
   uint32_t debug;
   uint32_t packet_size;
   uint32_t tests;

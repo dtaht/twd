@@ -51,7 +51,7 @@ int usage (char *err) {
 	 "    -L --logdir        log directory [default .]\n"
 	 "    -l --length        length of test [default 300ms]\n"
 	 "    -s --size          packet size [default 240 + headers] \n"
-	 "    -S --server        server mode [no default]\n"
+	 "    -S --server        run in server mode\n"
 	 "    -P --passfail      report pass/fail only\n"
 	 "    -e --ecn           enable ecn on all tests\n"
 	 "    -d --diffserv      [value] \n"
@@ -130,7 +130,7 @@ print_enabled_options(TWD_Options_t *o, FILE *fp) {
   penabled(dontfork);
   penabled(ipv4);
   penabled(ipv6);
-
+  penabled(inetd);
   fprintf(fp,"\nArgs:    ");
   fprintf(fp,"dscp:%s ",iptos2str(o->diffserv));
 
@@ -146,13 +146,12 @@ print_enabled_options(TWD_Options_t *o, FILE *fp) {
 }
 
 
-#define QSTRING "S:i:D:s:l:L:o:m:w:sh?Pv12346FeCTt"
+#define QSTRING "Si:D:s:l:L:o:m:w:sh?Pv12346FeCTt"
 
 int process_options(int argc, char **argv, TWD_Options_t *o)
 {
   int	    option_index;
   int	    opt;
-  int       rc;
   
   option_index = 0;
   opt	    = 0;
@@ -169,12 +168,6 @@ int process_options(int argc, char **argv, TWD_Options_t *o)
     {
 	case 'S': 
 	     o->server = 1;
-	     rc = to_addr_port(&o->server_address,optarg,TWDIP_any);
-	     if (rc != 0)
-	     {
-	       fprintf(stderr,"%s: invalid address\n",optarg);
-	       exit(EXIT_FAILURE);
-	     }
 	     break;
 	     
 	case 'D': o->debug = strtoul(optarg,NULL,10); break;
@@ -229,11 +222,36 @@ int finish_setup(TWD_Options_t *o,int idx,int argc,char **argv __attribute__((un
   
   if (g_numhosts == 0)
   {
+    socklen_t len;
+    
     if (!o->server)
     {
       fprintf(stderr,"need at least one address\n");
       return EINVAL;
     }
+    
+    g_hosts = calloc(1,sizeof(sockaddr__u));
+    if (g_hosts == NULL)
+      return ENOMEM;
+    
+    g_numhosts = 1;
+    
+    len = sizeof(sockaddr__u);
+    if (getsockname(STDIN_FILENO,&g_hosts[0].sa,&len) < 0)
+    {
+      int err = errno;
+      fprintf(stderr,"If you are not running via [x]inetd, then you need at least one address\n");
+      return err;
+    }
+    
+    /*---------------------------------------------------------------------
+    ; from here, we can check g_hosts[0].sa.sa_family to get the address
+    ; family.  The --ipv4 and --ipv6 options really aren't necessary.  The
+    ; inetd one probably is, since it flags that we already have a socket
+    ; available for use, we don't have to create one.
+    ;----------------------------------------------------------------------*/
+  
+    o->inetd = true;
   }
   else
   {
