@@ -57,7 +57,7 @@ endif
 
 CFLAGS += -Wall -Wextra -pedantic
 CFLAGS += -g
-LDLIBS += -lrt
+LDLIBS += -lrt -lpthread
 
 PROGS = test_clock test_ringbuffer twd
 all : $(PROGS)
