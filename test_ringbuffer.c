@@ -99,6 +99,7 @@ thread_writer(void *arg)
   while(!ringbuffer_write(tinfo->ringbuf,&test_data_struct[i],sizeof(ack_t)))
     sched_yield();
   printf("Done writing!\n");
+  fflush(stdout);
   return SUCCESS;
 }
 
@@ -152,30 +153,33 @@ static int test_pthread1(ringbuffer__s *rbuf) {
     	   "???");
 
     printf("Got here\n");
+ 
+    tinfo[0].thread_num = 1;
+    printf("Starting thread %d\n", 1);
+
+    /* The pthread_create() call stores the thread ID into
+       corresponding element of tinfo[] */
+
+    tinfo[1].ringbuf = tinfo[0].ringbuf = rbuf;
     
-    /* Create one thread for each command-line argument */
-      
-    for (tnum = 0; tnum < num_threads; tnum++) {
-      tinfo[tnum].thread_num = tnum + 1;
-      printf("Starting thread %d\n", tnum);
-      /* The pthread_create() call stores the thread ID into
-	 corresponding element of tinfo[] */
-      tinfo[1].ringbuf = tinfo[0].ringbuf = rbuf;
-	  
-	if((s = pthread_create(&tinfo[tnum].thread_id, &attr,
-			       &thread_writer, &tinfo[tnum])) != 0)
-	  handle_error_en(s, "pthread_create");
-  	if((s = pthread_create(&tinfo[tnum].thread_id, &attr,
-			       &thread_reader,& tinfo[tnum])) != 0)
-	  handle_error_en(s, "pthread_create");
-      }
-  
-      /* Destroy the thread attributes object, since it is no
-	 longer needed */
-  
-      if((s = pthread_attr_destroy(&attr)) != 0)
-	handle_error_en(s, "pthread_attr_destroy");
-  
+    if((s = pthread_create(&tinfo[0].thread_id, &attr,
+			   &thread_reader, &tinfo[0])) != 0)
+      handle_error_en(s, "pthread_create");
+    
+    sleep(1);
+    tinfo[1].thread_num = 2;
+    printf("Starting thread %d\n", 2);
+    
+    if((s = pthread_create(&tinfo[1].thread_id, &attr,
+			   &thread_writer,& tinfo[1])) != 0)
+      handle_error_en(s, "pthread_create");
+    
+    /* Destroy the thread attributes object, since it is no
+       longer needed */
+    
+    if((s = pthread_attr_destroy(&attr)) != 0)
+      handle_error_en(s, "pthread_attr_destroy");
+    
       /* Now join with each thread, and display its returned value */
       
       for (tnum = 0; tnum < num_threads; tnum++) {
