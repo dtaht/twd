@@ -171,8 +171,7 @@ size_t ringbuffer_write(
   {
     memcpy(&rbuf->address[rbuf->widx],src,len);
     rbuf->used += len;
-    // atomic_add(&rbuf->widx,len);
-    rbuf->widx += len;
+    atomic_add(&rbuf->widx,len);
   }
   
   return len;
@@ -195,13 +194,12 @@ size_t ringbuffer_read(
     size_t len = min_size_t(rbuf->used,amount);
     memcpy(dest,&rbuf->address[rbuf->ridx],len);
     rbuf->used -= len;
-    rbuf->ridx -= len;
+    rbuf->ridx += len;
 
     if (rbuf->ridx > rbuf->size)
     {
       rbuf->ridx -= rbuf->size;
-//      atomic_sub(&rbuf->widx,rbuf->size);
-      rbuf->widx -= rbuf->size;
+      atomic_sub(&rbuf->widx,rbuf->size);
     }
     return len;
   }
@@ -228,11 +226,11 @@ static int test_basic(ringbuffer__s *rbuf) {
   b = 2;
   ringbuffer_write(rbuf,&a,sizeof(a));
   ringbuffer_write(rbuf,&b,sizeof(b));
-  if(ringbuffer_read(rbuf,&c,sizeof(c)) != sizeof(c)) return -1; // fail
-  if(c!=a) return -2; // fail
-  if(ringbuffer_read(rbuf,&c,sizeof(c)) != sizeof(c)) return -1; // fail
-  if(c!=b) return -2; // fail
-  if(ringbuffer_read(rbuf,&c,sizeof(c)) != 0) return -3; // fail
+  if(ringbuffer_read(rbuf,&c,sizeof(c)) != sizeof(c)) return -1;
+  if(c!=a) return -2;
+  if(ringbuffer_read(rbuf,&c,sizeof(c)) != sizeof(c)) return -1;
+  if(c!=b) return -2;
+  if(ringbuffer_read(rbuf,&c,sizeof(c)) != 0) return -3;
   if(a != 1) return -4; // fail. we scribbled on a somehow
   if(b != 2) return -4; // fail. we scribbled on b somehow
   return 0;
@@ -243,7 +241,7 @@ int main(void)
   ringbuffer__s rbuf;
   int           rc;
   
-  rc = ringbuffer_init(&rbuf,16384);
+  rc = ringbuffer_init(&rbuf,4096);
   if (rc != 0)
   {
     fprintf(stderr,"ringbuffer_init() = %s",strerror(rc));
@@ -264,7 +262,7 @@ int main(void)
   
   printf("pid: %lu\n",(unsigned long)getpid());
 
-  if(!test_basic(&rbuf)) printf("Basic test failed\n");  
+  if(test_basic(&rbuf)) printf("Basic test failed\n");  
   return EXIT_SUCCESS;
 }
 
