@@ -83,7 +83,6 @@ int ringbuffer_init(ringbuffer__s *const buff,size_t size)
   unlink(path);
   
   buff->size = size;
-  buff->used = 0;
   buff->ridx = 0;
   buff->widx = 0;
   
@@ -145,6 +144,14 @@ int ringbuffer_init(ringbuffer__s *const buff,size_t size)
 
 /************************************************************************/  
 
+size_t ringbuffer_used(
+		       ringbuffer__s *const restrict rbuf)
+{
+  return(rbuf->widx - rbuf->ridx);
+}
+
+/************************************************************************/  
+
 size_t ringbuffer_write(
 	ringbuffer__s *const restrict rbuf,
 	const void    *restrict       src,
@@ -157,11 +164,10 @@ size_t ringbuffer_write(
   assert(src    != NULL);
   assert(amount >  0);
   
-  len = min_size_t(rbuf->size - rbuf->used,amount);
+  len = min_size_t(rbuf->size - ringbuffer_used(rbuf),amount);
   if (len > 0)
   {
     memcpy(&rbuf->address[rbuf->widx],src,len);
-    rbuf->used += len;
     atomic_add(&rbuf->widx,len);
   }
   
@@ -179,18 +185,21 @@ size_t ringbuffer_read(
   assert(rbuf   != NULL);
   assert(dest   != NULL);
   assert(amount >  0);
-  
-  if (rbuf->used > 0)
+  size_t size = rbuf->size;
+  size_t used = ringbuffer_used(rbuf);
+  if (used > 0)
   {
-    size_t len = min_size_t(rbuf->used,amount);
+    size_t len = min_size_t(used,amount);
+    size_t temp; 
     memcpy(dest,&rbuf->address[rbuf->ridx],len);
-    rbuf->used -= len;
     rbuf->ridx += len;
 
-    if (rbuf->ridx > rbuf->size)
+    if (rbuf->ridx > size)
     {
-      rbuf->ridx -= rbuf->size;
-      atomic_sub(&rbuf->widx,rbuf->size);
+      do
+      temp = rbuf->widx - size;
+      while(!atomic_compare_and_swap(&rbuf->widx,rbuf->widx,temp)) ;
+      rbuf->ridx -= size;
     }
     return len;
   }
@@ -205,7 +214,6 @@ int ringbuffer_reset(ringbuffer__s *const buff)
   assert(buff   != NULL);
   if(buff)
     { 
-      buff->used = 0;
       buff->ridx = 0;
       buff->widx = 0;
       return(EXIT_SUCCESS);
