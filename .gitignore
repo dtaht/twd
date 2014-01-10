@@ -7,3 +7,5 @@ test_ringbuffer
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
+core
+a.out
