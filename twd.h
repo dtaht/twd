@@ -1,5 +1,5 @@
-#ifndef _twd_h
-#define _twd_h
+#ifndef TWD_TWD_H
+#define TWD_TWD_H
 
 #include "parse_addr.h"
 #include <stdint.h>
