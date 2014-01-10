@@ -1,72 +1,38 @@
 #ifndef _ringbuffer_h
 #define _ringbuffer_h
+
+#define _GNU_SOURCE
+
+#include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
-#include <malloc.h>
-#include <memory.h>
+#include <string.h>
+#include <errno.h>
+#include <assert.h>
+
+#include <unistd.h>
+#include <sys/mman.h>
+
 #include "atomic.h"
 
-struct queue
+typedef struct
 {
-    void** buf;
-    size_t num;
-    uint64_t writePos;
-    uint64_t readPos;
-};
+  unsigned char *address;
+  size_t         size;
+  size_t         used;
+  size_t         ridx;
+  size_t         widx;
+} ringbuffer__s;
 
-typedef struct queue queue_t;
-
-static inline queue_t* ring_createQueue(size_t num)
-{
-    queue_t * new = malloc(sizeof(*new));
-    new->buf = malloc(sizeof(void*) * num);
-    memset(new->buf, 0, sizeof(void*)*num);
-    new->readPos = 0;
-    new->writePos = 0;
-    new->num = num;
-    return new;
-}
-
-static inline void ring_destroyQueue(queue_t* queue)
-{
-    if(queue)
-    {
-        if(queue->buf) free(queue->buf);
-    }
-    free(queue);
-}
-
-/* Fixme. Need a peek routine */
-
-#define kNumTries 3 /* Have no idea what this does */
-
-static inline int ring_enqueue(queue_t* queue, void* item)
-{
-    for(int i = 0; i < kNumTries; i++)
-    {
-      if(atomic_compare_and_swap(&queue->buf[queue->writePos % queue->num], NULL, item))  // this is is basically wrong
-        {
-            atomic_fetch_and_add(&queue->writePos, 1);
-            return 0;
-        }
-    }
-    return -1;
-}
-
-static inline void* ring_dequeue(queue_t* queue)
-{
-    for(int i = 0; i < kNumTries; i++)
-    {
-        void* value = queue->buf[queue->readPos % queue->num];
-        if(value && atomic_compare_and_swap(&queue->buf[queue->readPos % queue->num], value, NULL)) // basically wrong
-        {
-            atomic_fetch_and_add(&queue->readPos, 1);
-            return value;
-        }
-    }
-    return NULL;
-}
-
-#undef kNumTries
-
+int ringbuffer_init(ringbuffer__s *const buff,size_t size);
+size_t ringbuffer_write(
+	ringbuffer__s *const restrict rbuf,
+	const void    *restrict       src,
+	size_t                        amount
+			);
+size_t ringbuffer_read(
+	ringbuffer__s *const restrict rbuf,
+	void          *restrict       dest,
+	size_t                        amount
+		       );
+int ringbuffer_destroy(ringbuffer__s *const rbuf);
 #endif
