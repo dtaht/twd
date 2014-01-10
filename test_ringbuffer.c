@@ -27,7 +27,7 @@ typedef struct acks ack_t;
 const char SUCCESS[] = "SUCCESS";
 const char FAIL[] = "FAIL";
 
-#define TEST_LOOPS (64 * * TWD_RINGBUFFER_SIZE)
+#define TEST_LOOPS (64 * TWD_RINGBUFFER_SIZE)
 
 ack_t test_data_struct[TEST_LOOPS] = {0};
 
