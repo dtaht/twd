@@ -27,7 +27,7 @@ typedef struct acks ack_t;
 const char SUCCESS[] = "SUCCESS";
 const char FAIL[] = "FAIL";
 
-ack_t test_data_struct[TWD_RINGBUFFER_SIZE * 2] = {0};
+ack_t test_data_struct[TWD_RINGBUFFER_SIZE * 4] = {0};
 
 static int test_basic(ringbuffer__s *rbuf) {
   int a, b, c;
@@ -93,6 +93,7 @@ static int test_rollover(ringbuffer__s *rbuf) {
     {
       res |= 1;
       printf("BOOM after rollover: i=%d c=%d count=%d\n",i,c,count);
+      printf("Values for buffer: ridx, widx = ( %ld, %ld )", rbuf->ridx, rbuf->widx);
     }
  
   return res;
@@ -129,6 +130,7 @@ thread_reader(void *arg)
     if(count != sizeof(a)) { printf("TRUNCATED READ\n"); exit(-1); }
   }
   printf("Done reading!\n");
+  sleep(1);
   return SUCCESS;
 }
 
@@ -137,22 +139,32 @@ thread_writer(void *arg)
 {
   struct test_control *tinfo = arg;
   int i;
+  int count = 0;
   printf("Writer started\n");
-    for(i = 0; i<2*TWD_RINGBUFFER_SIZE-1; i++) { 
-      //     for(i = 0; i<512; i++) { // works
+  // starts getting rescheduled around 962 entries
+  for(i = 0; i<2*TWD_RINGBUFFER_SIZE-1; i++) { 
     test_data_struct[i].seqnum = i;
     test_data_struct[i].flags = 0;
+    // and if you call it with this enabled it never hits the lock so
+    // the test succeeds
     //    printf("Writing i:%d!\n",i);
-    if(!ringbuffer_write(tinfo->ringbuf,&test_data_struct[i],sizeof(ack_t)))
+    // not having this while on the write was why I was not seeing all the data
+
+    while ((count = ringbuffer_write(tinfo->ringbuf,
+				     &test_data_struct[i],
+				     sizeof(ack_t))) != sizeof(ack_t))
       sched_yield();
   }
   printf("Done writing i!\n");
   test_data_struct[i].seqnum = i;
   test_data_struct[i].flags = 1;
   while(!ringbuffer_write(tinfo->ringbuf,&test_data_struct[i],sizeof(ack_t)))
+    {
     sched_yield();
+    }
   printf("Done writing!\n");
   fflush(stdout);
+  sleep(1);
   return SUCCESS;
 }
 
