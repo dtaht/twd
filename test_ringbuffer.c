@@ -45,6 +45,59 @@ static int test_basic(ringbuffer__s *rbuf) {
   return 0;
 }
 
+/* Test to see what happens when we roll over the page boundry
+   in a single thread */
+
+static int test_rollover(ringbuffer__s *rbuf) {
+  int a, b, c;
+  int count;
+  a = 1;
+  b = 2;
+  c = 1;
+  int res = 0;
+  int i = 0;
+  for(i = 0; i < 1024; i++) {
+    if((count = ringbuffer_write(rbuf,&a,sizeof(a))) != sizeof(a))
+       {
+	 res |= 1;
+	 printf("We have an early problem: count = %d at %d\n",count,i);
+       }
+   }
+  i = 0;
+  do {}
+  while((count = ringbuffer_read(rbuf,&c,sizeof(c)) == sizeof(c)) && 
+	c == 1 && i++ < 1024) ;
+
+  if(i == 1024 && c==1 && count == 0) {
+    printf("All good before rollover\n");
+  } else {
+    res |= 1;
+    printf("Read goes BOOM: i=%d c=%d count=%d\n",i,c,count);
+  }
+  a = 2;
+  for(i = 0; i < 1024; i++) {
+    if((count = ringbuffer_write(rbuf,&a,sizeof(a))) != sizeof(a)) 
+       {
+	 res |= 1;
+	 printf("We have a post-rollover problem: count = %d at %d\n",count,i);
+       }
+   }
+  i = 0;
+  do {}
+  while((count = ringbuffer_read(rbuf,&c,sizeof(c)) == sizeof(c)) && 
+	c == 2 && i++ < 1024) ;
+  if(i == 1024 && c==2 && count == 0)
+    {
+      printf("All good after rollover\n");
+    } else 
+    {
+      res |= 1;
+      printf("BOOM after rollover: i=%d c=%d count=%d\n",i,c,count);
+    }
+ 
+  return res;
+}
+
 /* PTHREADED TESTS */
 
 struct test_control {
@@ -221,6 +274,9 @@ int main(void)
 
   rc = test_basic(&rbuf);
   printf("BASIC: %s\n", rc ? "FAIL" : "SUCCESS");
+  ringbuffer_reset(&rbuf);
+  rc = test_rollover(&rbuf);
+  printf("ROLLOVER: %s\n", rc ? "FAIL" : "SUCCESS");
   ringbuffer_reset(&rbuf);
   printf("Starting pthread test be prepared for weirdness\n");
   rc = test_pthread1(&rbuf);
