@@ -169,7 +169,7 @@ int process_options(int argc, char **argv, TWD_Options_t *o)
     {
 	case 'S': 
 	     o->server = 1;
-	     rc = to_addr_port(&o->server_address,optarg);
+	     rc = to_addr_port(&o->server_address,optarg,TWDIP_any);
 	     if (rc != 0)
 	     {
 	       fprintf(stderr,"%s: invalid address\n",optarg);
@@ -216,31 +216,8 @@ int process_options(int argc, char **argv, TWD_Options_t *o)
   return optind;
 }
 
-struct tests_hosts {
-  AddrPort_t host;
-};
-
 typedef struct tests_hosts TestHosts_t;
 
-/* Comment out til we sort out dns lookups
-
-int finish_setup(TWD_Options_t *o,int idx,int argc,char **argv)
-{
-  TestHosts_t *hosts_under_test = (TestHosts_t *) 
-    calloc(1,(argc + 1) * sizeof(TestHosts_t));
-
-  if(o->debug > 0) print_enabled_options(o, stderr);
-  
-  for(int i = idx; i < argc; i++)
-  {
-    strcpy(hosts_under_test[i].host.host,argv[i]);
-    parse_address(&hosts_under_test[i].host);
-    printf("testing %s on port %d\n",hosts_under_test[i].host.host,
-	   hosts_under_test[i].host.port);
-  }
-   
-*/
- 
 int finish_setup(TWD_Options_t *o,int idx,int argc,char **argv __attribute__((unused)))
 {
   assert(o    != NULL);
@@ -267,7 +244,7 @@ int finish_setup(TWD_Options_t *o,int idx,int argc,char **argv __attribute__((un
   
     for (int i = 0 ; idx < argc ; idx++ , i++)
     {
-      int rc = to_addr_port(&g_hosts[i],argv[idx]);
+      int rc = to_addr_port(&g_hosts[i],argv[idx],TWDIP_any);
       if (rc != 0)
       {
         fprintf(stderr,"%s: %s\n",argv[idx],strerror(rc));

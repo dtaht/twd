@@ -1,5 +1,5 @@
-#ifndef _dscp_h
-#define _dscp_h
+#ifndef TWD_DSCP_H
+#define TWD_DSCP_H
 extern int parse_ipqos(const char *cp);
 extern const char * iptos2str(int iptos);
 
