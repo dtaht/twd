@@ -1,5 +1,8 @@
+#define _GNU_SOURCE
 #include <pthread.h>
 #include <stdint.h>
+#include <sched.h>
+
 #include "ringbuffer.h"
 
 #define TWD_RINGBUFFER_SIZE 4096 // 1 memory page on most systems
@@ -65,10 +68,12 @@ thread_reader(void *arg)
   printf("Reader started\n");
   while(!(count = ringbuffer_read(tinfo->ringbuf,&a,sizeof(a))))
     sched_yield();
+  if(count != sizeof(a)) { printf("TRUNCATED READ\n"); exit(-1); }
   while(a.flags != 1) {
     printf("Seqnum: %d; flags: %d\n", a.seqnum, a.flags);
     while(!(count = ringbuffer_read(tinfo->ringbuf,&a,sizeof(a))))
       sched_yield();
+    if(count != sizeof(a)) { printf("TRUNCATED READ\n"); exit(-1); }
   }
   printf("Done reading!\n");
   return SUCCESS;
@@ -80,7 +85,8 @@ thread_writer(void *arg)
   struct test_control *tinfo = arg;
   int i;
   printf("Writer started\n");
-  for(i = 0; i<2*TWD_RINGBUFFER_SIZE; i++) { 
+    for(i = 0; i<2*TWD_RINGBUFFER_SIZE-1; i++) { 
+      //     for(i = 0; i<512; i++) { // works
     test_data_struct[i].seqnum = i;
     test_data_struct[i].flags = 0;
     //    printf("Writing i:%d!\n",i);
@@ -93,7 +99,7 @@ thread_writer(void *arg)
   while(!ringbuffer_write(tinfo->ringbuf,&test_data_struct[i],sizeof(ack_t)))
     sched_yield();
   printf("Done writing!\n");
-  return FAIL;
+  return SUCCESS;
 }
 
 static int test_pthread1(ringbuffer__s *rbuf) {
@@ -105,8 +111,18 @@ static int test_pthread1(ringbuffer__s *rbuf) {
 
   num_threads = 2;
 
-  /* Allocate memory for pthread_create() arguments in c99 */
+  cpu_set_t set;
 
+//  int proc;
+  CPU_ZERO( &set );
+  CPU_SET( 1, &set );
+  if (sched_setaffinity( getpid(), sizeof( cpu_set_t ), &set ))
+    {
+      perror( "sched_setaffinity" );
+      return NULL;
+    }
+
+  /* Allocate memory for pthread_create() arguments in c99 */
   {
     struct test_control tinfo[num_threads *
 			     sizeof(struct test_control)];
