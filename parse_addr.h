@@ -1,10 +1,12 @@
 #ifndef TWD_PARSE_ADDR_H
 #define TWD_PARSE_ADDR_H
 
-struct addrport {
-	int port;
-	char host[MAX_HOSTNAME+8];
-};
+typedef enum
+{
+  TWDIP_any = AF_UNSPEC,
+  TWDIP_v4  = AF_INET,
+  TWDIP_v6  = AF_INET6
+} twdip__t;
 
 typedef union
 {
@@ -13,13 +15,9 @@ typedef union
   struct sockaddr_in6 sin6;
 } sockaddr__u;
 
-typedef struct addrport AddrPort_t;
-
-extern int parse_address(AddrPort_t *address);
-extern int to_port_num(const char *tport);
 extern int to_addr_port(
-	sockaddr__u *restrict sockaddr,
-	const char  *restrict addrport
-			);
-
+		sockaddr__u *restrict sockaddr,
+		const char  *restrict addrport,
+		twdip__t
+	);
 #endif
