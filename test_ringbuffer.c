@@ -61,12 +61,12 @@ thread_reader(void *arg)
 {
   struct test_control *tinfo = arg;
   int count;
-  ack_t *a;
+  ack_t a;
   printf("Reader started\n");
   while(!(count = ringbuffer_read(tinfo->ringbuf,&a,sizeof(a))))
     sched_yield();
-  while(a->flags != 1) {
-    printf("Seqnum: %d; flags: %d\n", a->seqnum, a->flags);
+  while(a.flags != 1) {
+    printf("Seqnum: %d; flags: %d\n", a.seqnum, a.flags);
     while(!(count = ringbuffer_read(tinfo->ringbuf,&a,sizeof(a))))
       sched_yield();
   }
@@ -83,6 +83,7 @@ thread_writer(void *arg)
   for(i = 0; i<2*TWD_RINGBUFFER_SIZE; i++) { 
     test_data_struct[i].seqnum = i;
     test_data_struct[i].flags = 0;
+    //    printf("Writing i:%d!\n",i);
     if(!ringbuffer_write(tinfo->ringbuf,&test_data_struct[i],sizeof(ack_t)))
       sched_yield();
   }
