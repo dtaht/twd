@@ -1,5 +1,7 @@
 #include "ringbuffer.h"
 
+#define TWD_RINGBUFFER_SIZE 4096 // 1 memory page on most systems
+
 static int test_basic(ringbuffer__s *rbuf) {
   int a, b, c;
   a = 1;
@@ -14,6 +16,11 @@ static int test_basic(ringbuffer__s *rbuf) {
   if(a != 1) return -4; // fail. we scribbled on a somehow
   if(b != 2) return -4; // fail. we scribbled on b somehow
   return 0;
+}
+
+static int test_pthread1(ringbuffer__s *rbuf) {
+  int a, b, c;
+  a = 1;
 }
 
 int main(void)
@@ -33,7 +40,7 @@ int main(void)
   ;-----------------------------------------------*/
   
   rbuf.address[0] = 0x5A;
-  printf("%02X %02X\n",rbuf.address[0],rbuf.address[16384]);  
+  printf("%02X %02X\n",rbuf.address[0],rbuf.address[TWD_RINGBUFFER_SIZE]);  
   
   /*------------------------------------------------------------------------
   ; the pause that refreshes.  This also allows us to check /proc/<pid>/maps
@@ -44,6 +51,9 @@ int main(void)
 
   rc = test_basic(&rbuf);
   printf("BASIC: %s\n", rc ? "FAIL" : "SUCCESS");
+  ringbuffer_reset(&rbuf);
+  rc = test_pthread1(&rbuf);
+  printf("PTHREAD1: %s\n", rc ? "FAIL" : "SUCCESS");
   return(rc);
 }
 

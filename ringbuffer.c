@@ -200,6 +200,21 @@ size_t ringbuffer_read(
 
 /************************************************************************/
 
+int ringbuffer_reset(ringbuffer__s *const buff)
+{
+  assert(buff   != NULL);
+  if(buff)
+    { 
+      buff->used = 0;
+      buff->ridx = 0;
+      buff->widx = 0;
+      return(EXIT_SUCCESS)
+    }
+  return(EXIT_FAIL);
+}
+
+/************************************************************************/
+
 int ringbuffer_destroy(ringbuffer__s *const rbuf)
 {
   assert(rbuf != NULL);
