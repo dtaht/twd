@@ -144,7 +144,7 @@ int ringbuffer_init(ringbuffer__s *const buff,size_t size)
 
 /************************************************************************/  
 
-size_t ringbuffer_peek(ringbuffer__s *const restrict rbuf)
+size_t ringbuffer_avail(ringbuffer__s *const restrict rbuf)
 {
   return (rbuf->size - (rbuf->widx - rbuf->ridx));
 }
@@ -233,12 +233,34 @@ size_t ringbuffer_read(
     if (rbuf->ridx > size)
     {
       do {
-       	temp3 = temp = __atomic_load_n(&rbuf->widx, __ATOMIC_ACQUIRE); // atomic_read()?
+       	temp3 = temp = __atomic_load_n(&rbuf->widx, __ATOMIC_ACQUIRE);
 	temp2 = temp - size;
       }
       while((temp3 = atomic_compare_and_swap(&rbuf->widx,temp,temp2)) != temp) ;
       rbuf->ridx -= size;
     }
+    return len;
+  }
+  else
+    return 0;
+}
+
+/************************************************************************/
+
+size_t ringbuffer_peek(
+	ringbuffer__s *const restrict rbuf,
+	void          *restrict       dest,
+	size_t                        amount
+)
+{
+  assert(rbuf   != NULL);
+  assert(dest   != NULL);
+  assert(amount >  0);
+  size_t used = ringbuffer_used(rbuf);
+  if (used > 0)
+  {
+    size_t len = min_size_t(used,amount);
+    memcpy(dest,&rbuf->address[rbuf->ridx],len);
     return len;
   }
   else
