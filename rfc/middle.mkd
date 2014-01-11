@@ -9,11 +9,51 @@
 
 ## Features
 
+The TWD protocol and implementation can test for problems in the
+following network features, bidirectionally, over the course of 
+the test:
+
+* respect for and preservation of diffserv bits
+
+* respect for and preservation ecn-related bits
+
+* bandwidth determination
+
+* fq detection
+
+It can measure interpacket loss, jitter and delay, down to nanosecond 
+intervals on all packets subject to the process's scheduling interval.
+
 ## Limitations
 
 ## Specification of Requirements 
 
+There is a need for a test that measures loss, jitter, delay and
+packet markings as per how VOIP and Videoconferencing packet transfers
+work, especially in the context in the context of bufferbloat
+[BBLOAT]. Additionally, 
+
+VOIP is characterised (typically) by isochronous single packet
+transfers over UDP typically over a 10ms interval, transfered in both
+directions.
+
+Videoconferencing is generally more tied to the local frame rate,
+which can drop as low as 5 per second in many cases. In all cases,
+videoconferencing transfers a variable number of (fairly large)
+packets based on the encoder's interpretation of the available
+bandwidth.
+
+Packet markings (diffserv and ECN) are not commonly used today in
+voice and video transfers, partially due to the difficulty in setting
+them and partially due to fear of the unknown.
+
 # Conceptual Description of the Protocol
+
+TWD packets are intended to look like VOIP packets which are generally
+very short and very small. For example, the Opus encoder typically
+generates a packet size of about 110 packets. As the payload in TWD
+consists of bidirectional measurement data only, a simpler protocol
+than RTP and RTSP was desired.
 
 # Protocol Operation
 
@@ -29,7 +69,12 @@
 
 # Protocol Encoding
 
-A TWD packet is sent as the body of a UDP datagram, destined to a well-known multicast address or to a unicast address, over IPv4 or IPv6.  Both the source and destination UDP port are set to a user specified port number.  After registration a TWD packet MUST be silently ignored unless it matches a previously known nonce and negotiated sequence number range.
+A TWD packet is sent as the body of a UDP datagram, destined to a
+well-known multicast address or to a unicast address, over IPv4 or
+IPv6.  Both the source and destination UDP port are set to a user
+specified port number.  After registration a TWD packet MUST be
+silently ignored unless it matches a previously known nonce and
+negotiated sequence number range.
  
 TWD packets MUST NOT be sent as IPv6 Jumbograms.
 
@@ -37,13 +82,14 @@ TWD packets MUST NOT be sent as IPv6 Jumbograms.
 
 ### Timestamp
 
-Times are carried as 64-bit values specifying a number of seconds since the Epoch.
-This should cover all reasonable applications of twd.
+Times are carried as 64-bit values specifying a number of seconds
+since the Epoch.  This should cover all reasonable applications of
+twd.
 
 ### Timediff
 
-A timediff is a 30 bit number in nanoseconds since the previous timestamp in this
-packet.
+A timediff is a 30 bit number in nanoseconds since the previous
+timestamp in this packet.
 
 The final two bits indicate ECN seen (ECT(3)), and Loss.
 
@@ -53,11 +99,12 @@ The final two bits indicate ECN seen (ECT(3)), and Loss.
 
 ### Nonce
 
-The nonce is a 64 bit integer derived from the challenge/response pair, and
-used in all subsequent communications between a test client and server.
+The nonce is a 64 bit integer derived from the challenge/response
+pair, and used in all subsequent communications between a test client
+and server.
 
-The server SHOULD endevour that this be randomly generated, and that all concurrently
-running tests use a unique nonce.
+The server SHOULD endevour that this be randomly generated, and that
+all concurrently running tests use a unique nonce.
 
 ### Sequence Number (seqno)
 The seqno is a 32 bit value starting at a negotiated point. It can wrap.
@@ -292,15 +339,15 @@ the other stream.
 	 0                   1                   2                   3
 	 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	|  Type = 9     |     Length      |       testno                |
+	|  Type = 9     |     Length      |       testno                | 
 	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	|  seqno                                  			            |
+	|  seqno                                  			|
 	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	|  timediff	           					                    | EL|
+	|  timediff	           			            | EL|
 	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	|  seqno                                  			            |
+	|  seqno                                                        |
 	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	|  timediff...           					                | EL|
+	|  timediff...                                              | EL|
 	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ^[fig:LastSeen_format::Last Seen packets format]
 
@@ -384,7 +431,161 @@ FIXME: probably use the separate timestamp stanza
 
 # Implementation considerations
 
+The implementation is dependent on the availability of pthreads, atomic
+primitives, POSIX realtime and time calls, and the ability to set various
+socket options from userspace.
+
+Some Operating Systems may not be able to perform all tests. Notably,
+TOS setting of ECN and Diffserv bits is not supported in Windows. Also,
+several tests are dependent on features only available in Linux 3.10.12
+or later.
+
+## Implementation overview
+
+## Example: VOIP-like test
+
+You have one thread writing packets and the other receiving them, at a
+fixed clock rate, say 10ms for the sake of this example. What we want
+to measure are loss, jitter, and one way delay.
+
+Unlike voip, we are sending several acknowledgements of each received
+packet *and their timestamps* in the contents of every packet in each
+direction. Every packet has some (up to the packet padding size)
+duplication of each ack_t; so each side can cope with some packet loss
+and still retain up to date information.
+
+We have 4 threads, a sender(s), receiver(r), and collector(c). 
+
+s wakes up every 10ms. r wakes up on receiving a packet. c wakes up
+every second to collect/process/deliver status. m watches for test
+expiry, processor overload, and othe problems.
+
+s gets a timestamp. (not actually very needed with timerfds)
+
+s sends a new packet and checks to see if it has any acks from the
+rthread.  (if so it can refine it's RTT estimate, get a grip on jitter
+from the other side, etc.)
+
+it sends a seqno and timestamp from that packet into r's ringbuf.  It
+goes to sleep until the next interval
+
+r wakes up on packet reception. It gets a timestamp. It processes the
+packet, and looks at each acknowledge ack and peers into it's (r)
+ringbuf to see if the most recently processed ack is >= the seqnum
+still on it's ringbuf. if so it pulls off that ringbuffer entry, notes
+the timestamp, compares the two, calculates the delay and jitter, and
+so on. if not it considers it lost (or out of order) and it pulls off
+packets until it gets to == seqnum and stops.
+
+t sends along a copy to the collector, and goes back to get another packet.
+
+Aside from the atomic operations and the timestamp (SO_TIMESTAMP seems
+feasible), there are no syscalls, and almost no possibility (using
+realtime scheduling) that these two threads will be interrupted, thus
+inducing system jitter into the data.
+
+the collector can run at a lower priority and be thoroughly interruptable.
+
+The server thread can derive the RTT at any given point thusly:
+
+  ringbuffer_peek(rbuf)/sizeof(ack_t)
+
+The max size of the ringbuffer in this isochronous case is say, 2*the
+nominal RTT * sizeof(ack_t)
+
+The relationship between these two threads gets more interesting and
+complex as we try to run faster (tcp in userspace anyone?) and
+actually respond to loss/marking (speedtest), or do more rrul like
+tests (where you might have 12 or more of r+s pairs)
+
+## TOS field preservation tests
+
+The TOS field is underused and underutilized primarily due to fear
+that some intervening middlebox will maltreat the packets. Also, as
+IPv6 changed the definition of IP_TOS to IPV6_TCLASS, applications
+lackadasically ported to IPV6 typically do not call the correct socket
+option for their IPv6 sockets.
+
+Diffserv is not well deployed or respected either.
+
+### TOS
+
+With a system not under load, this test should suffice to determine if
+Diffserv is preserved in either direction. It sends multiple bursts of
+all 64, in various orders, and observes in what order they arrive at
+the destination, as well as loss, jitter and delay. Pacing should be
+observed to avoid overwhelming the network, along the lines of IW10.
+
+With a system under congestive load, running this test simultaneously
+should reveal if either direction is actively using classification to
+schedule packets.
+
+### Diffserv
+
+With a system not under load, this test should suffice to determine if
+Diffserv is preserved in either direction. It sends multiple bursts of
+all known diffserv markings, in various orders, and observes in what
+order they arrive at the destination, as well as loss, jitter and
+delay. Pacing should be observed to avoid overwhelming the network,
+along the lines of IW10.
+
+With a system under congestive load, running this test simultaneously
+should reveal if either direction is actively using classification to
+schedule packets.
+
+### ECN
+
+With a system not under load, this test should suffice to determine if
+ECN is preserved E2E. It sends multiple bursts of 4 packets (ECN bits
+0 01 10 11), in various orders and observes in what order they arrive
+at the destination. It is not a failure to drop ECT(0). (1?) It is 
+not a failure to see ECT(3) on a ECT(2) marked packet, but it is
+important to ensure that ECT(3) is not always asserted on ECT(2) enabled
+packets.
+
+### Mixed Classification Test (CS)
+
+With a system not under load, this test should suffice to determine if
+802.11e is present in the local or remote system. It sends multiple
+bursts of 7 packets (CS0 through CS7), in various orders and observes
+in what order they arrive at the destination.
+
+### Mixed Classification Test (AF)
+
+With a system not under load, this test should suffice to determine
+if 802.11e is present in the system. It sends multiple bursts of
+7 packets (AF11 through AF41), in various orders and observes in
+what order they arrive at the destination. 
+
+## Shaping Tests
+
+### Bandwidth detection
+
+### Tail drop and AQM detection
+
+AQM technologies have patterns associated to them. Codel in particular
+uses an invsqrt to schedule drops and ECN markings and this pattern is
+easily observed in packet captures, thus it can be tested for. PIE and
+RED are more complex, however it seems feasible to look at packet
+mark/drop patterns in context with the traffic they are trying to
+control (e.g. TCP).
+
+### FQ detection
+
+A diffserv test SHOULD be run simultaneously with a bandwidth test on
+several different port numbers. This should give a picture of if
+fair queueing and classification are in use. See [RRUL.]
+
+A simpler test is to run one bandwidth test while running another
+(say, voip test) on another set of ports.
+
+## Videoconferencing test
+
+TBD
+
 # Resources and Additional Information
+
+http://www.bufferbloat.net
 
 # Security Considerations
 
@@ -392,6 +593,8 @@ FIXME: probably use the separate timestamp stanza
 This document has no actions for IANA.
 
 # Acknowlegements
+
+Netperf, Netanalyzer, ShaperProbe, uftp, iperf, freeswitch.
 
 # Conclusions
 
