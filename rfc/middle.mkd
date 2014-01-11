@@ -454,7 +454,7 @@ direction. Every packet has some (up to the packet padding size)
 duplication of each ack_t; so each side can cope with some packet loss
 and still retain up to date information.
 
-We have 4 threads, a sender(s), receiver(r), and collector(c). 
+We have 4 threads, a (s)ender, (r)eceiver, (c)ollector and (m)onitor
 
 s wakes up every 10ms. r wakes up on receiving a packet. c wakes up
 every second to collect/process/deliver status. m watches for test
