@@ -477,7 +477,7 @@ the timestamp, compares the two, calculates the delay and jitter, and
 so on. if not it considers it lost (or out of order) and it pulls off
 packets until it gets to == seqnum and stops.
 
-t sends along a copy to the collector, and goes back to get another packet.
+r sends along a copy to the collector, and goes back to get another packet.
 
 Aside from the atomic operations and the timestamp (SO_TIMESTAMP seems
 feasible), there are no syscalls, and almost no possibility (using
@@ -538,24 +538,30 @@ schedule packets.
 With a system not under load, this test should suffice to determine if
 ECN is preserved E2E. It sends multiple bursts of 4 packets (ECN bits
 0 01 10 11), in various orders and observes in what order they arrive
-at the destination. It is not a failure to drop ECT(0). (1?) It is 
-not a failure to see ECT(3) on a ECT(2) marked packet, but it is
-important to ensure that ECT(3) is not always asserted on ECT(2) enabled
+at the destination. It is not a failure to drop ECT(1). It is not a
+failure to see ECT(3) on a ECT(2) marked packet, but it is important
+to ensure that ECT(3) is not always asserted on ECT(2) enabled
 packets.
 
 ### Mixed Classification Test (CS)
 
 With a system not under load, this test should suffice to determine if
 802.11e is present in the local or remote system. It sends multiple
-bursts of 7 packets (CS0 through CS7), in various orders and observes
-in what order they arrive at the destination.
+bursts of 8 packets (CS0 through CS7), in various orders over a single
+tuple and observes in what order they arrive at the destination.
 
 ### Mixed Classification Test (AF)
 
 With a system not under load, this test should suffice to determine
-if 802.11e is present in the system. It sends multiple bursts of
-7 packets (AF11 through AF41), in various orders and observes in
-what order they arrive at the destination. 
+if the AF markings are respected in any way.
+
+It sends multiple bursts of 12 packets (AF11 through AF41), in various
+orders over a single tuple and observes in what order they arrive at
+the destination.
+
+### Mixed Mixed Classification Test (AF + CS)
+
+AF and CS packets re-mixed together on a single tuple.
 
 ## Shaping Tests
 
@@ -579,6 +585,22 @@ fair queueing and classification are in use. See [RRUL.]
 A simpler test is to run one bandwidth test while running another
 (say, voip test) on another set of ports.
 
+### Framing detection
+
+Certain underlying transport technologies have high and measurable
+amounts of framing overhead (e.g. ATM). This test attempts to 
+detect if that overhead exists, and if so, what the packet padding
+size actually is.
+
+### Aggregation detection
+
+Certain underlying transport technologies have high and measurable
+amounts of scheduling latency induced by aggregation. This test
+attempts to detect if that overhead exists, and if so, what the
+aggregate packet size actually is.
+
+
+
 ## Videoconferencing test
 
 TBD
@@ -594,7 +616,7 @@ This document has no actions for IANA.
 
 # Acknowlegements
 
-Netperf, Netanalyzer, ShaperProbe, uftp, iperf, freeswitch.
+Netperf, Netanalyzer, ShaperProbe, Speedtest, uftp, iperf, freeswitch.
 
 # Conclusions
 
