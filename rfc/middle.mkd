@@ -13,6 +13,10 @@ The TWD protocol and implementation can test for problems in the
 following network features, bidirectionally, over the course of 
 the test:
 
+FIXME: BOWD? (Bandwidth and One Way Delay measurements?)
+       Bidirectional One Way Delay measurements?
+TOWD? (Timed and One Way Delay measurements?"
+
 * Accurate one way delay measurements (in each direction)
 
 * respect for and preservation of diffserv bits
@@ -296,7 +300,8 @@ seconds since 00:00:00, 1 January 1970 UTC, at which this message
 is sending data relative to. It needn't be synced to ntp.
 
 This option is unusual in that it has the same meaning whatever kind
-of message it is sent in.
+of message it is sent in. FIXME: This is wrong. We need to differentiate
+per-sent-packet timestamps from timestamp fields.
 
    Fields :
 
