@@ -98,7 +98,7 @@ int create_timerfds(fd_set *exceptfds) {
   new_value.it_value.tv_sec = 0; // now.tv_sec;
   new_value.it_value.tv_nsec = 1000L; // arm the timer
   new_value.it_interval.tv_sec = 0;
-  new_value.it_interval.tv_nsec = 1000L; // 1us
+  new_value.it_interval.tv_nsec = 1000L * 1000L; // 1ms
 
   // Setting to a relative time doesn't appear to work. Perhaps
   // using TFD_TIMER_ABSTIME is better and looping til we make sure?
@@ -107,17 +107,11 @@ int create_timerfds(fd_set *exceptfds) {
   {
     printf("WTF\n");
   }
-  /* OK this is either a bug in my code or in the implementation.
-     If you set the ms1 and ms10 timers to the same value they fire
-     for a while. If you set it 10x bigger, less while.
-
-     perhaps setting the flags to be this low doesn't work?
-  */
 
   ms10_interval.it_value.tv_sec = 0; // now.tv_sec;
   ms10_interval.it_value.tv_nsec = 1000L; // arm the timer
   ms10_interval.it_interval.tv_sec = 0;
-  ms10_interval.it_interval.tv_nsec = 10*1000L; // 10us
+  ms10_interval.it_interval.tv_nsec = 10L * 1000L *1000L; // 10ms
   if((rc = timerfd_settime(ms10, 0, &ms10_interval, NULL)) !=0 )
   {
     printf("WTF\n");
@@ -126,7 +120,7 @@ int create_timerfds(fd_set *exceptfds) {
   ms100_interval.it_value.tv_sec = 0;
   ms100_interval.it_value.tv_nsec = 1000; // arm the timer
   ms100_interval.it_interval.tv_sec = 0;
-  ms100_interval.it_interval.tv_nsec = 100L * 1000L; // 100us
+  ms100_interval.it_interval.tv_nsec = 100L * 1000L * 1000L; // 100ms
   if(( rc = timerfd_settime(ms100, 0, &ms100_interval, NULL)) !=0)
   {
     printf("WTF\n");
