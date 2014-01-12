@@ -13,6 +13,8 @@ The TWD protocol and implementation can test for problems in the
 following network features, bidirectionally, over the course of 
 the test:
 
+* Accurate one way delay measurements (in each direction)
+
 * respect for and preservation of diffserv bits
 
 * respect for and preservation ecn-related bits
@@ -26,9 +28,15 @@ intervals on all packets subject to the process's scheduling interval.
 
 ## Limitations
 
+The tests use use interpacket sender timestamp differences. Being
+sender clocked on isochronous intervals, it is straightforward to
+calculate the actual departure time (and thus, one way delay) so long
+as the sender can isochronously deliver packets across fairly short
+(10ms) intervals.
+
 ## Specification of Requirements 
 
-There is a need for a test that measures loss, jitter, delay and
+There is a need for a test that measures loss, jitter, one way delay and
 packet markings as per how VOIP and Videoconferencing packet transfers
 work, especially in the context in the context of bufferbloat
 [BBLOAT]. Additionally, 
@@ -51,9 +59,14 @@ them and partially due to fear of the unknown.
 
 TWD packets are intended to look like VOIP packets which are generally
 very short and very small. For example, the Opus encoder typically
-generates a packet size of about 110 packets. As the payload in TWD
-consists of bidirectional measurement data only, a simpler protocol
-than RTP and RTSP was desired.
+generates an ipv4 packet size of about 110 packets. 
+
+As the payload in TWD consists of bidirectional measurement data only,
+a simpler protocol than RTP and RTSP was desired.
+
+Packets in a measurement stream are sent on a short monotonic interval.
+Each packet is timestamped (with the highest possible accuracy)
+shortly before sending.
 
 # Protocol Operation
 
@@ -80,11 +93,11 @@ TWD packets MUST NOT be sent as IPv6 Jumbograms.
 
 ## Data Types
 
-### Timestamp
+### Absolute Timestamp
 
 Times are carried as 64-bit values specifying a number of seconds
-since the Epoch.  This should cover all reasonable applications of
-twd.
+since the Epoch on the sender's local clock.  This should cover all
+reasonable applications of twd.
 
 ### Timediff
 
@@ -110,6 +123,8 @@ all concurrently running tests use a unique nonce.
 The seqno is a 32 bit value starting at a negotiated point. It can wrap.
 
 FIXME: we COULD use encrypted seqnos but I dislike the overhead.
+
+FIXME: I wouldn't mind a 24 bit seqno
 
 ### Address
 
