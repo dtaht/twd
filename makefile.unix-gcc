@@ -59,7 +59,7 @@ CFLAGS += -Wall -Wextra -pedantic
 CFLAGS += -g
 LDLIBS += -lrt -lpthread
 
-PROGS = test_clock test_ringbuffer twd
+PROGS = test_clock test_ringbuffer twd test_infbuffer
 all : $(PROGS)
 
 clean :
@@ -107,13 +107,16 @@ clean :
 test_clock : test_clock.o
 test_ringbuffer : test_ringbuffer.o ringbuffer.o
 twd : twd.o parse_addr.o dscp.o
+test_infbuffer : test_infbuffer.o infbuffer.o
 
 twd.o : twd.c twd.h dscp.h parse_addr.h
 parse_addr.o : parse_addr.c parse_addr.h
 dscp.o : dscp.c dscp.h
 ringbuffer.o : ringbuffer.h ringbuffer.c
+infbuffer.c : infbuffer.c infbuffer.h
 test_ringbuffer.o : ringbuffer.h test_ringbuffer.c
 test_clock.o : test_clock.c
+test_infbuffer.o : test_infbuffer.c infbuffer.h
 
 ############################################################################
 #
