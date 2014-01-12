@@ -66,6 +66,9 @@ int create_timerfds(fd_set *exceptfds) {
   struct timespec watchdog;
   sigset_t sigmask, empty_mask;
   struct sigaction sa;
+  fd_set origfds;
+  fd_set currfds;
+
   int rc = 0;
   int highfd = 0;
   int ms1, ms10, ms100; /* Setup timers to fire on these intervals */
@@ -129,17 +132,19 @@ int create_timerfds(fd_set *exceptfds) {
     printf("WTF\n");
   }
   //  FD_ZERO(readfds);
-  FD_ZERO(exceptfds);
-  FD_SET(ms1,exceptfds);
-  FD_SET(ms10,exceptfds);
-  FD_SET(ms100,exceptfds);
+  FD_ZERO(&origfds);
+  FD_SET(ms1,&origfds);
+  FD_SET(ms10,&origfds);
+  FD_SET(ms100,&origfds);
+
+  currfds = origfds;
 
   sigemptyset(&sigmask);
   sigfillset(&sigmask);
 
 #define READ_OVER(f)\
   do {				 \
-    if(FD_ISSET(f, exceptfds))			     \
+    if(FD_ISSET(f, &currfds))			     \
       printf( "" # f " timer fired %ld times\n", read_overrun(f)); \
   } while (0);
 
@@ -153,8 +158,9 @@ int create_timerfds(fd_set *exceptfds) {
   // events...
   // FIXME Maybe we have to block signals in order to not miss an update?
 
+  currfds = origfds;
   while(test++ < 10000 && 
-	((rc = pselect(highfd,exceptfds,NULL,NULL,&watchdog,&sigmask))>0))
+	((rc = pselect(highfd,&currfds,NULL,NULL,&watchdog,&sigmask))>0))
   {
     if(rc > 0) {
     READ_OVER(ms100);
@@ -166,6 +172,7 @@ int create_timerfds(fd_set *exceptfds) {
       /* Handle error... if I wasn't blocking everything */
       printf("Got an EINTR\n");
     }
+    currfds = origfds;
   }
 
  if(rc > 0)
@@ -342,6 +349,8 @@ int main(void)
     fprintf(stderr,"ringbuffer_init() = %s",strerror(rc));
     return EXIT_FAILURE;
   }
+
+  /* see: http://www.spinics.net/lists/arm-kernel/msg47075.html */
   
   create_timerfds(&exceptfds);
   exit(0);
