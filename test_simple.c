@@ -42,23 +42,28 @@ typedef struct test_control test_control_t;
 
 uint64_t read_overrun(int fd) {
   uint64_t err = 0;
-  read(fd,&err,8);
+  int rc = read(fd,&err,8);
+  if(rc < 1) { if(errno == EAGAIN) err = 1; }
   return err;
 }
 
 int create_timerfds(fd_set *exceptfds) {
   struct itimerspec new_value;
+  struct itimerspec ms10_interval;
+  struct itimerspec ms100_interval;
   struct timespec now;
   struct timespec watchdog;
   int rc = 0;
   int highfd = 0;
   int ms1, ms10, ms100; /* Setup timers to fire on these intervals */
-  clockid_t clockid = CLOCK_REALTIME;
+  clockid_t clockid = CLOCK_MONOTONIC;
   int test = 0;
   /* When called with no flags the select only returns the first one */
   /* ms1 = timerfd_create(clockid,0); */
   /* ms10 = timerfd_create(clockid,0); */
   /* ms100 = timerfd_create(clockid,0); */
+  /* This needs a separate fcntl in older linuxes. Might still. Fixme */
+
   ms1 = timerfd_create(clockid,TFD_NONBLOCK|TFD_CLOEXEC);
   ms10 = timerfd_create(clockid,TFD_NONBLOCK|TFD_CLOEXEC);
   ms100 = timerfd_create(clockid,TFD_NONBLOCK|TFD_CLOEXEC);
@@ -67,34 +72,41 @@ int create_timerfds(fd_set *exceptfds) {
 
   if (clock_gettime(clockid, &now) == -1)
     handle_error("clock_gettime");
-  now.tv_sec += 1; /* start 1 sec in the future */
-  new_value.it_value.tv_sec = 0; // now.tv_sec;
-  new_value.it_value.tv_nsec = 0; // now.tv_nsec;
+
   watchdog.tv_sec = 5;
   watchdog.tv_nsec = 0;
 
+  //  now.tv_sec += 1; /* start 1 sec in the future */
   new_value.it_value.tv_sec = 0; // now.tv_sec;
+  new_value.it_value.tv_nsec = 0; // now.tv_nsec;
+
+  new_value.it_value.tv_sec = 1; // now.tv_sec;
   new_value.it_value.tv_nsec = 1; // arm the timer
   new_value.it_interval.tv_sec = 0;
-  new_value.it_interval.tv_nsec = 1000 * 1000L; // 1ms
+  new_value.it_interval.tv_nsec = 1000L; // 1us
 
   if((rc = timerfd_settime(ms1, 0, &new_value, NULL)) != 0) 
   {
     printf("WTF\n");
   }
-  new_value.it_value.tv_sec = 0; // now.tv_sec;
-  new_value.it_value.tv_nsec = 1; // arm the timer
-  new_value.it_interval.tv_sec = 0;
-  new_value.it_interval.tv_nsec = 10L *1000L * 1000L; // 10ms
-  if((rc = timerfd_settime(ms10, 0, &new_value, NULL)) !=0 )
+  /* OK this is either a bug in my code or in the implementation */
+  /* ms10_interval.it_value.tv_sec = 0; 
+   */
+
+  ms10_interval.it_value.tv_sec = 1; // now.tv_sec;
+  ms10_interval.it_value.tv_nsec = 1; // arm the timer
+  ms10_interval.it_interval.tv_sec = 0;
+  ms10_interval.it_interval.tv_nsec = 10L* 1000L; // 10us
+  if((rc = timerfd_settime(ms10, 0, &ms10_interval, NULL)) !=0 )
   {
     printf("WTF\n");
   }
-  new_value.it_value.tv_sec = 1;
-  new_value.it_value.tv_nsec = 1; // arm the timer
-  new_value.it_interval.tv_sec = 0;
-  new_value.it_interval.tv_nsec = 100L * 1000L * 1000L; // 100ms
-  if(( rc = timerfd_settime(ms100, 0, &new_value, NULL)) !=0)
+
+  ms100_interval.it_value.tv_sec = 1;
+  ms100_interval.it_value.tv_nsec = 1; // arm the timer
+  ms100_interval.it_interval.tv_sec = 0;
+  ms100_interval.it_interval.tv_nsec = 100L * 1000L; // 100us
+  if(( rc = timerfd_settime(ms100, 0, &ms100_interval, NULL)) !=0)
   {
     printf("WTF\n");
   }
