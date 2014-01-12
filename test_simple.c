@@ -40,6 +40,8 @@ struct test_control {
 
 typedef struct test_control test_control_t;
 
+/* Non blocking read protected by a select call */
+
 uint64_t read_overrun(int fd) {
   uint64_t err = 0;
   int rc = read(fd,&err,8);
