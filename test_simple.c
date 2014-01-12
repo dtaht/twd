@@ -2,7 +2,7 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <sched.h>
-
+#include <signal.h>
 #include <sys/timerfd.h>
 
 #include "ringbuffer.h"
@@ -45,30 +45,42 @@ typedef struct test_control test_control_t;
 uint64_t read_overrun(int fd) {
   uint64_t err = 0;
   int rc = read(fd,&err,8);
-  if(rc < 1) { if(errno == EAGAIN) err = 1; }
+  if(rc < 1) { if(errno == EAGAIN) err = 0; }
   return err;
 }
+
+/*           sigemptyset(&sigmask);
+           sigaddset(&sigmask, SIGCHLD);
+           if (sigprocmask(SIG_BLOCK, &sigmask, NULL) == -1) {
+               perror("sigprocmask");
+               exit(EXIT_FAILURE);
+           }
+*/
 
 int create_timerfds(fd_set *exceptfds) {
   struct itimerspec new_value;
   struct itimerspec ms10_interval;
   struct itimerspec ms100_interval;
+  struct itimerspec old_value;
   struct timespec now;
   struct timespec watchdog;
+  sigset_t sigmask, empty_mask;
+  struct sigaction sa;
   int rc = 0;
   int highfd = 0;
   int ms1, ms10, ms100; /* Setup timers to fire on these intervals */
   clockid_t clockid = CLOCK_MONOTONIC;
   int test = 0;
   /* When called with no flags the select only returns the first one */
-  /* ms1 = timerfd_create(clockid,0); */
-  /* ms10 = timerfd_create(clockid,0); */
-  /* ms100 = timerfd_create(clockid,0); */
-  /* This needs a separate fcntl in older linuxes. Might still. Fixme */
+  ms1 = timerfd_create(clockid,0);
+  ms10 = timerfd_create(clockid,0);
+  ms100 = timerfd_create(clockid,0);
+  /* This needs a separate fcntl in older linuxes. Might still. Fixme.
+     but it is safe presently to call this with blocking reads */
 
-  ms1 = timerfd_create(clockid,TFD_NONBLOCK|TFD_CLOEXEC);
-  ms10 = timerfd_create(clockid,TFD_NONBLOCK|TFD_CLOEXEC);
-  ms100 = timerfd_create(clockid,TFD_NONBLOCK|TFD_CLOEXEC);
+  /* ms1 = timerfd_create(clockid,TFD_NONBLOCK|TFD_CLOEXEC); */
+  /* ms10 = timerfd_create(clockid,TFD_NONBLOCK|TFD_CLOEXEC); */
+  /* ms100 = timerfd_create(clockid,TFD_NONBLOCK|TFD_CLOEXEC); */
 
   assert(ms1 > 0 || ms10 > 0 || ms100 > 0);
 
@@ -79,33 +91,37 @@ int create_timerfds(fd_set *exceptfds) {
   watchdog.tv_nsec = 0;
 
   //  now.tv_sec += 1; /* start 1 sec in the future */
-  new_value.it_value.tv_sec = 0; // now.tv_sec;
-  new_value.it_value.tv_nsec = 0; // now.tv_nsec;
 
-  new_value.it_value.tv_sec = 1; // now.tv_sec;
-  new_value.it_value.tv_nsec = 1; // arm the timer
+  new_value.it_value.tv_sec = 0; // now.tv_sec;
+  new_value.it_value.tv_nsec = 1000L; // arm the timer
   new_value.it_interval.tv_sec = 0;
   new_value.it_interval.tv_nsec = 1000L; // 1us
+
+  // Setting to a relative time doesn't appear to work. Perhaps
+  // using TFD_TIMER_ABSTIME is better and looping til we make sure?
 
   if((rc = timerfd_settime(ms1, 0, &new_value, NULL)) != 0) 
   {
     printf("WTF\n");
   }
-  /* OK this is either a bug in my code or in the implementation */
-  /* ms10_interval.it_value.tv_sec = 0; 
-   */
+  /* OK this is either a bug in my code or in the implementation.
+     If you set the ms1 and ms10 timers to the same value they fire
+     for a while. If you set it 10x bigger, less while.
 
-  ms10_interval.it_value.tv_sec = 1; // now.tv_sec;
-  ms10_interval.it_value.tv_nsec = 1; // arm the timer
+     perhaps setting the flags to be this low doesn't work?
+  */
+
+  ms10_interval.it_value.tv_sec = 0; // now.tv_sec;
+  ms10_interval.it_value.tv_nsec = 1000L; // arm the timer
   ms10_interval.it_interval.tv_sec = 0;
-  ms10_interval.it_interval.tv_nsec = 10L* 1000L; // 10us
+  ms10_interval.it_interval.tv_nsec = 10*1000L; // 10us
   if((rc = timerfd_settime(ms10, 0, &ms10_interval, NULL)) !=0 )
   {
     printf("WTF\n");
   }
 
-  ms100_interval.it_value.tv_sec = 1;
-  ms100_interval.it_value.tv_nsec = 1; // arm the timer
+  ms100_interval.it_value.tv_sec = 0;
+  ms100_interval.it_value.tv_nsec = 1000; // arm the timer
   ms100_interval.it_interval.tv_sec = 0;
   ms100_interval.it_interval.tv_nsec = 100L * 1000L; // 100us
   if(( rc = timerfd_settime(ms100, 0, &ms100_interval, NULL)) !=0)
@@ -117,6 +133,9 @@ int create_timerfds(fd_set *exceptfds) {
   FD_SET(ms1,exceptfds);
   FD_SET(ms10,exceptfds);
   FD_SET(ms100,exceptfds);
+
+  sigemptyset(&sigmask);
+  sigfillset(&sigmask);
 
 #define READ_OVER(f)\
   do {				 \
@@ -130,9 +149,12 @@ int create_timerfds(fd_set *exceptfds) {
   if(ms100 > ms10) highfd = ms100; 
   highfd++;
 
-  // So like, theoretically, we should get 1000 ms1, 100 ms10, 10 ms100 
-  while(test++ < 1000 && 
-	(rc = pselect(highfd,exceptfds,NULL,NULL,&watchdog,NULL)))
+  // So like, theoretically, we should get 10000 ms1, 1000 ms10, 100 ms100 
+  // events...
+  // FIXME Maybe we have to block signals in order to not miss an update?
+
+  while(test++ < 10000 && 
+	((rc = pselect(highfd,exceptfds,NULL,NULL,&watchdog,&sigmask))>0))
   {
     if(rc > 0) {
     READ_OVER(ms100);
@@ -140,7 +162,12 @@ int create_timerfds(fd_set *exceptfds) {
     READ_OVER(ms1);
     rc = 0;
     }
+    if (rc == -1 && errno != EINTR) {
+      /* Handle error... if I wasn't blocking everything */
+      printf("Got an EINTR\n");
+    }
   }
+
  if(rc > 0)
     {
     READ_OVER(ms100);
