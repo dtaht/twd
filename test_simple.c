@@ -150,7 +150,7 @@ int create_timerfds(fd_set *exceptfds) {
 
   // So like, theoretically, we should get 10000 ms1, 1000 ms10, 100 ms100 
   // events...
-  // FIXME Maybe we have to block signals in order to not miss an update?
+  // FIXME do we have to block signals in order to not miss an update?
 
   currfds = origfds;
   while(test++ < 10000 && 
@@ -179,15 +179,39 @@ int create_timerfds(fd_set *exceptfds) {
   if(rc == -1) { printf("Error in select\n"); }
 
 #undef READ_OVER
-   
+
+  new_value.it_value.tv_sec = 0; 
+  new_value.it_value.tv_nsec = 0; // disarm the timer
+
+  if((rc = timerfd_settime(ms1, 0, &new_value, NULL)) != 0) 
+  {
+    printf("Can't disarm timer\n");
+  }
+  if((rc = timerfd_settime(ms10, 0, &new_value, NULL)) != 0) 
+  {
+    printf("Can't disarm timer\n");
+  }
+  if((rc = timerfd_settime(ms100, 0, &new_value, NULL)) != 0) 
+  {
+    printf("Can't disarm timer\n");
+  }
+  
 }
 
 int destroy_timers() {
   return(0);
 }
 
-static void *
-thread_reader(void *arg)
+
+/* Maintain global clock shared among all threads */
+
+static void * thread_timer(void *arg) {
+	timer_t *time;
+	// See above tes code for details 
+        return time;
+}
+
+static void * thread_reader(void *arg)
 {
   test_control_t *tinfo = arg;
   int count;
