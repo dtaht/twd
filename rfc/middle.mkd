@@ -32,7 +32,7 @@ intervals on all packets subject to the process's scheduling interval.
 
 ## Limitations
 
-The tests use use interpacket sender timestamp differences. Being
+The tests use interpacket sender timestamp differences. Being
 sender clocked on isochronous intervals, it is straightforward to
 calculate the actual departure time (and thus, one way delay) so long
 as the sender can isochronously deliver packets across fairly short
@@ -43,7 +43,8 @@ as the sender can isochronously deliver packets across fairly short
 There is a need for a test that measures loss, jitter, one way delay and
 packet markings as per how VOIP and Videoconferencing packet transfers
 work, especially in the context in the context of bufferbloat
-[BBLOAT]. Additionally, 
+[BBLOAT]. Additionally, the preservation and availability of TOS and ECN
+bits is not widely known.
 
 VOIP is characterised (typically) by isochronous single packet
 transfers over UDP typically over a 10ms interval, transfered in both
