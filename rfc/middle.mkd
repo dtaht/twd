@@ -64,7 +64,7 @@ them and partially due to fear of the unknown.
 
 TWD packets are intended to look like VOIP packets which are generally
 very short and very small. For example, the Opus encoder typically
-generates an ipv4 packet size of about 110 packets. 
+generates an ipv4 packet size of about 110 bytes. 
 
 As the payload in TWD consists of bidirectional measurement data only,
 a simpler protocol than RTP and RTSP was desired.
