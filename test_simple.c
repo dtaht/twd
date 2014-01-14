@@ -8,6 +8,7 @@
 #include "ringbuffer.h"
 #include "protocol.h"
 #include "log.h"
+#include "test_control.h"
 
 /* This defines the simplest 3 tests we can run, testing for 
  * tos, diffserv, & ecn awareness.
@@ -22,23 +23,6 @@ const char FAIL[] = "FAIL";
 
 ack_t test_data_struct[TEST_LOOPS] = {0};
 
-/* The contents of this struct are still in flux */
-
-struct test_control {
-  pthread_t thread_id; /* ID returned by pthread_create() */
-  int thread_num;      /* Application-defined thread # */
-  ringbuffer__s *ringbuf;
-
-  cpu_set_t cpus;
-
-  size_t fd;
-  size_t cookie;
-  size_t seqno_start;
-  size_t limit;
-
-};
-
-typedef struct test_control test_control_t;
 
 /* Non blocking read protected by a select call */
 
