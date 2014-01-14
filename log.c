@@ -199,7 +199,7 @@ static void syslog_dump(logger_t *self)
 static void syslog_dump_stats(logger_t *self, void *stats)
 {
   syslog_control_t *priv = (syslog_control_t *) PRIV_CHECK(self);
-  syslog(LOG_INFO, "info: %d warn: %d error: %d debug %d messages sent\n", 
+  syslog(LOG_INFO, "info: %d warn: %d error: %d debug %d messages sent", 
 	 priv->info, priv->warn, priv->error, priv->debug);
 }
 
@@ -225,20 +225,25 @@ logger_t sys_logger __read_mostly = {
 int main() {
 logger_t logger = console_logger;
 logger.init(&logger,"TEST");
-WARN(3,"testing warnin");
+WARN(3,"testing warning");
 INFO(3,"testing info");
 ERR(3,"testing err");
 DEBUG(3,3,"testing debug");
+logger.dump_stats(&logger, NULL); // will enhance this later
+
 INFO(3,"Switching to syslog, tail /var/log/syslog to see");
 
 logger.destroy(&logger);
 logger = sys_logger;
 logger.init(&logger,"TEST");
-WARN(3,"testing warnin");
+WARN(3,"testing warning");
 INFO(3,"testing info");
 ERR(3,"testing err");
 DEBUG(3,3,"testing debug");
+INFO(3,"Done testing syslog");
 logger.destroy(&logger);
+logger.dump_stats(&logger, NULL); // will enhance this later
+
 
 }
 #endif
