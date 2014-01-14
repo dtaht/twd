@@ -6,6 +6,14 @@
 
 /* Only linux has TIMERFDs so... */
 
+/* Heh. It turns out  gettimeofday uses a globally shared
+   page with the current time on it, now. It's faster than
+   hell.
+
+   I'm so obsolete
+   We still need to keep track of monotonic time tho.
+*/
+
 #define HAVE_TIMERFD 1
 
 #if HAVE_TIMERFD
