@@ -1,9 +1,20 @@
 #define _GNU_SOURCE
+
+#include <unistd.h>
+#include <fcntl.h>
+#include <netdb.h>
+#include <sys/types.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <sched.h>
 #include <signal.h>
+#include <sys/socket.h>
 #include <sys/timerfd.h>
+#include <sys/stat.h>
+#include <sys/un.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netinet/ip.h>
 
 #include "ringbuffer.h"
 #include "protocol.h"
@@ -259,8 +270,8 @@ static int test_pthread1(ringbuffer__s *rbuf) {
   num_threads = 4;
   
   cpu_set_t set;
-  socketpair(AF_INET, SOCK_DGRAM, 0, &sfds);
-  socketpair(AF_INET, SOCK_DGRAM, 0, &rfds);
+  socketpair(AF_INET, SOCK_DGRAM, 0, (int *) &sfds);
+  socketpair(AF_INET, SOCK_DGRAM, 0, (int *) &cfds);
   
 //  FIXME, setup the cpu stuff via the control structs
 //  and the correct pthread stuff
@@ -358,6 +369,9 @@ typedef union {
   dscp_t dscp;
 } tos_t;
 
+typedef struct timespec timespec_t;
+typedef struct timeval timeval_t;
+
 typedef struct {
   timespec_t ts;
   timespec_t rtt;
@@ -374,7 +388,7 @@ typedef struct  {
   int size;
   int ts_type;
   int64_t nonce;
-  struct timespec_t ts;
+  timespec_t ts;
 } pbuffer_t;
 
 int settos(int p, int type, int tos, int ecn) {
@@ -383,11 +397,11 @@ int settos(int p, int type, int tos, int ecn) {
   switch(type)
   {
   default: 
-  IP_PROTO: rc = setsockopt(p, IP_PROTO, IP_TOS, (char *) dscp, 
-			   sizeof(dscp));
-           break;
-  IPV6_PROTO: rc = setsockopt(p,IPV6_PROTO, IPV6_TCLASS, (int * dscp), 
+  IPPROTO_IP: rc = setsockopt(p, IPPROTO_IP, IP_TOS, (char *) dscp, 
 			    sizeof(dscp));
+           break;
+  IPPROTO_IPV6: rc = setsockopt(p,IPPROTO_IPV6, IPV6_TCLASS, (int *)
+				dscp,  sizeof(dscp));
 	   break;
   }
   return(rc);
@@ -411,15 +425,18 @@ int settos(int p, int type, int tos, int ecn) {
   Advanced API (RFC3542) (2) specifies RECVHOPLIMIT
   packet options were defined earlier. HOWEVER RECPKTOPTIONS
   is probably more portable.
+
+RECVHOPLIMIT RECPATHMTU are good useful options too.
+
 */
  
 int recv_setup(pbuffer_t *p) {
   switch(p->type) {
-  case IP_PROTO: 
+  case IPPROTO_IP: 
     if(setsockopt(p->fd, IPPROTO_IP, IP_RECVTOS, &set,sizeof(set))<0) { } 
     if(setsockopt(p->fd, IPPROTO_IP, IP_RECVTTL, &set,sizeof(set))<0) { }  
     break;
-  case IPV6_PROTO: 
+  case IPPROTO_IPV6: 
     if(setsockopt(p->fd, IPPROTO_IPV6, IPV6_RECVTCLASS, &set,sizeof(set))<0) { } break;
     if(setsockopt(p->fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT, &set,sizeof(set))<0) { } break;
   }
@@ -445,11 +462,14 @@ int recv_setup(pbuffer_t *p) {
 
 /* FIXME get these from the right clock */
 
-int twd_gettime(struct timespec *t1) {
+int twd_gettime(timespec_t *t1) {
 }
 
-int convert_timeval2timespec(struct timeval *t1, struct timespec *t2)
+int convert_timeval2timespec(timespec_t *t1, timeval_t *t2)
 {
+  t1->tv_sec = t2->tv_sec;
+  t1->tv_nsec = t2->tv_usec * 1000L;
+  return 0;
 }
  
 int recv_pbuffer(pbuffer_t *p, void * data)
@@ -487,7 +507,7 @@ int recv_pbuffer(pbuffer_t *p, void * data)
 		}
 	      break;
 	    case IPPROTO_IPV6: if(cmsg->cmsg_len) switch (cmg->cmsg_type) {
-		case IPV6_HOPCOUNT: p->ttl = (int *) CMSG_DATA(cmsg); break;
+		case IPV6_HOPLIMIT: p->ttl = (int *) CMSG_DATA(cmsg); break;
 		case IPV6_TCLASS: p->tos = (int *) CMSG_DATA(cmsg); break;
 		case SO_TIMESTAMP: converttimeval2timespec((timeval *) CMSG_DATA(cmsg), p->ts); break;
 		case SO_TIMESTAMPNS: p->ts = (timespec *) CMSG_DATA(cmsg); break;
