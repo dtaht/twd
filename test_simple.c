@@ -253,11 +253,15 @@ static int test_pthread1(ringbuffer__s *rbuf) {
   int stack_size = 0;
   void *res;
   int i;
+  int sfds[2];
+  int cfds[2];
 
-  num_threads = 2;
-
+  num_threads = 4;
+  
   cpu_set_t set;
-
+  socketpair(AF_INET, SOCK_DGRAM, 0, &sfds);
+  socketpair(AF_INET, SOCK_DGRAM, 0, &rfds);
+  
 //  FIXME, setup the cpu stuff via the control structs
 //  and the correct pthread stuff
 //  A good test will make sure things are on different cores
@@ -337,6 +341,244 @@ static int test_pthread1(ringbuffer__s *rbuf) {
       }
   }
   return 0;
+}
+
+#define ISECNMARK(a) (a & 2)
+#define ISECNSEEN(a) (a & 3)
+
+// watch out for endian problems here
+
+typedef struct {
+  uint8_t tos:6;
+  uint8_t ecn:2;
+} dscp_t;
+
+typedef union {
+  uint8_t tos;
+  dscp_t dscp;
+} tos_t;
+
+typedef struct {
+  timespec_t ts;
+  timespec_t rtt;
+  uint32_t seqno;
+  uint8_t ttl;
+  tos_t tos;
+} per_packet_info_t;
+
+typedef struct  {
+  int fd;
+  int type;
+  int tos;
+  int ttl;
+  int size;
+  int ts_type;
+  int64_t nonce;
+  struct timespec_t ts;
+} pbuffer_t;
+
+int settos(int p, int type, int tos, int ecn) {
+  int dscp = tos | ecn;
+  int rc = 0;
+  switch(type)
+  {
+  default: 
+  IP_PROTO: rc = setsockopt(p, IP_PROTO, IP_TOS, (char *) dscp, 
+			   sizeof(dscp));
+           break;
+  IPV6_PROTO: rc = setsockopt(p,IPV6_PROTO, IPV6_TCLASS, (int * dscp), 
+			    sizeof(dscp));
+	   break;
+  }
+  return(rc);
+}
+
+// FIXME: check for ipv6 equivalents, and the correct meaning of set
+
+//        if (setsockopt(sock, SOL_SOCKET, SO_TIMESTAMP, (char *)&dscp, 
+//                       sizeof(dscp)) == SOCKET_ERROR) {
+//
+
+/* SO_TIMESTAMP
+  Generate time stamp for each incoming packet using the (not necessarily
+  monotonous!) system time. Result is returned via recv_msg() in a
+  control message as timeval (usec resolution).
+
+* SO_TIMESTAMPNS
+  Same time stamping mechanism as SO_TIMESTAMP, but returns result as
+  timespec (nsec resolution).
+
+  Advanced API (RFC3542) (2) specifies RECVHOPLIMIT
+  packet options were defined earlier. HOWEVER RECPKTOPTIONS
+  is probably more portable.
+*/
+ 
+int recv_setup(pbuffer_t *p) {
+  switch(p->type) {
+  case IP_PROTO: 
+    if(setsockopt(p->fd, IPPROTO_IP, IP_RECVTOS, &set,sizeof(set))<0) { } 
+    if(setsockopt(p->fd, IPPROTO_IP, IP_RECVTTL, &set,sizeof(set))<0) { }  
+    break;
+  case IPV6_PROTO: 
+    if(setsockopt(p->fd, IPPROTO_IPV6, IPV6_RECVTCLASS, &set,sizeof(set))<0) { } break;
+    if(setsockopt(p->fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT, &set,sizeof(set))<0) { } break;
+  }
+  p->ts_type = 0; /* user timestamping - note this is a bad idea on high rate flows */
+
+#if defined(SO_TIMESTAMPNS)
+  if(setsockopt(p->fd, SOL_SOCKET, SO_TIMESTAMPNS, &set,sizeof(set))<0) 
+    {
+#endif
+    if(setsockopt(p->fd, IPPROTO_IPV6, SO_TIMESTAMP, &set,sizeof(set))<0) { 
+      ts->ts_type = 2; // usec resolution
+    } else {
+      p->ts_type = 0;
+    }
+#if defined(SO_TIMESTAMPNS)
+    } else {
+    p->ts_type = 1; // Nanosec resolutions
+  } 
+#endif
+  break;
+
+}
+
+/* FIXME get these from the right clock */
+
+int twd_gettime(struct timespec *t1) {
+}
+
+int convert_timeval2timespec(struct timeval *t1, struct timespec *t2)
+{
+}
+ 
+int recv_pbuffer(pbuffer_t *p, void * data)
+{
+  struct msghdr msg; 
+  struct iovec iov[1];  
+  memset(&msg, '\0', sizeof(msg));
+  msg.msg_iov = iov;
+  msg.msg_iovlen = 3;
+  iov[0].iov_base = (char *) &pkt;
+  iov[0].iov_len = sizeof(pkt);
+  p->ttl = 0;
+  p->tos = 0;
+  p->ts = {0};
+  /* FIXME: wrong */
+
+  int message_size = sizeof(struct cmsghdr)+sizeof(p->tos)+sizeof(p->ttl)+sizeof(p->ts);
+  int cmsg_size = message_size;
+  char buf[CMSG_SPACE(sizeof(p->ts) + packet_size)];
+  msg.msg_control = buf; // Assign buffer space for control header + header data/value
+  msg.msg_controllen = sizeof(buf); //just initializing it
+
+  int nRet = recvmsg(udpSocket, &msg, packet_size);
+  if (nRet > 0) {
+	struct cmsghdr *cmsg;
+	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg,cmsg)) {
+
+	  switch(cmsg->cmsg_level)
+	    {
+	    case IPPROTO_IP: if(cmsg->cmsg_len) switch (cmg->cmsg_type) {
+		case IP_TTL: p->ttl = (int *) CMSG_DATA(cmsg); break; 
+		case IP_TOS: p->tos = (int *) CMSG_DATA(cmsg); break;
+		case SO_TIMESTAMP: p->ts = (timeval *) CMSG_DATA(cmsg); break;
+		case SO_TIMESTAMPNS: p->ts = (timespec *) CMSG_DATA(cmsg); break;
+		}
+	      break;
+	    case IPPROTO_IPV6: if(cmsg->cmsg_len) switch (cmg->cmsg_type) {
+		case IPV6_HOPCOUNT: p->ttl = (int *) CMSG_DATA(cmsg); break;
+		case IPV6_TCLASS: p->tos = (int *) CMSG_DATA(cmsg); break;
+		case SO_TIMESTAMP: converttimeval2timespec((timeval *) CMSG_DATA(cmsg), p->ts); break;
+		case SO_TIMESTAMPNS: p->ts = (timespec *) CMSG_DATA(cmsg); break;
+		}
+	      break;
+	    default: // FIXME: It's data now
+	    }
+	}
+  }
+  /* if we didn't get a timestamp with the packet, fill out the ts
+     field portably. */
+     if(p->ts.sec == 0 and p->ts.nsec == 0)
+       twd_gettime(p->ts);
+}
+
+int send_setup(pbuffer_t *p)
+{
+        if (setsockopt(sock, IPPROTO_IPV6, IPV6_TCLASS, (char *)&dscp, 
+                       sizeof(dscp)) == SOCKET_ERROR) {
+
+}
+
+int send_pbuffer(pbuffer_t *p)
+{
+}
+
+int send_packet_opt(pbuffer *p, char *data, int tos, int ecn) {
+  /* setsockopt version */
+  settos(p->fd,p->tos,p->ecn);
+  sendmsg();
+}
+
+/* DSCP Test */
+
+int test_recv_dscp(int p) {
+  recv_packet(p, &buffer);
+}
+
+int test_sender_dscp(int p) {
+  send_packet(p, tos, &buffer);
+}
+
+#define MAX_MTU 1500
+
+/* TOS Test */
+int test_tos() {
+  per_packet_info results[64];
+}
+
+/* ECN Test */
+int recv_ecn(pbuffer_t *p)
+{
+  per_packet_info_t results[4];
+  pbuffer_t l = {*p};
+  
+}
+
+// FIXME, this assumes we are only getting one packet 
+// per seqno, which is sort of right at this level
+
+ int recv_dscp(pbuffer_t *p)
+{
+  per_packet_info_t results[23];
+  pbuffer_t l = {*p};
+  int rc;
+  char buf[MAX_MTU];
+  for(int i = 0; i < 24; i++)
+    {
+      if(rc = recv_pbuffer(&l,&buf)) { 
+	results[i].seqno = l->seqno;
+	results[i].ttl = l->ttl;
+	results[i].ts = l->ts;
+	results[i].tos = l->tos;
+	send_result_to(&collector,&results[i]);
+      } else {
+	// do sane things on timeouts and errors etc
+      }
+    }
+  return 0;
+}
+
+int test_dscp(pbuffer_t *p) {
+  pbuffer_t l = {*p};
+  char data[MAX_MTU];
+  for(int i = 0; i < 24 && ipqos[i].name != NULL; i++) {
+    l.tos.tos = ipqos[i].value;
+    // these two should move to send_packet
+    l.seqno++;
+    twd_gettime(&l.ts);
+    send_packet(&l,&data);
+  }
 }
 
 int main(void)
