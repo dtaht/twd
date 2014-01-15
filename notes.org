@@ -4,6 +4,8 @@
 ** link against rt
 ** get timerfd code from somewhere if needed (can I get by with select?)
 ** Test against realtime scheduler (pthread?)
+** Look at https://github.com/bittorrent/libutp
+
 * DONE Think about options
 ** -s --server no -c needed
 ** -4 -6 
