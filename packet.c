@@ -97,18 +97,17 @@ int recv_pbuffer(pbuffer_t *p, void * data)
 
 	  switch(cmsg->cmsg_level)
 	    {
+            case SOL_SOCKET: if(cmsg->cmsg_len) switch(cmsg->cmsg_type) {
+                case SO_TIMESTAMP: converttimeval2timespec((timeval_t *) CMSG_DATA(cmsg), &p->ts); break;
+		case SO_TIMESTAMPNS: memcpy(&p->ts,CMSG_DATA(cmsg),sizeof(timespec_t)); break;
+                } break;
 	    case IPPROTO_IP: if(cmsg->cmsg_len) switch (cmg->cmsg_type) {
 		case IP_TTL: p->header.ttl = (int *) CMSG_DATA(cmsg); break; 
 		case IP_TOS: p->header.tos = (int *) CMSG_DATA(cmsg); break;
-		case SO_TIMESTAMP: converttimeval2timespec((timeval_t *) CMSG_DATA(cmsg), p->ts); break;
-		case SO_TIMESTAMPNS: memcpy(&p->ts,CMSG_DATA(cmsg),sizeof(timespec_t)); break;
-		}
-	      break;
+		} break;
 	    case IPPROTO_IPV6: if(cmsg->cmsg_len) switch (cmg->cmsg_type) {
 		case IPV6_HOPLIMIT: p->header.ttl = (int *) CMSG_DATA(cmsg); break;
 		case IPV6_TCLASS: p->header.tos = (int *) CMSG_DATA(cmsg); break;
-		case SO_TIMESTAMP: converttimeval2timespec((timeval_t *) CMSG_DATA(cmsg), p->ts); break;
-		case SO_TIMESTAMPNS: memcpy(&p->ts,CMSG_DATA(cmsg),sizeof(timespec_t)); break;
 		}
 	      break;
 	    default: // FIXME: It's data now
