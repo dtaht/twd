@@ -22,9 +22,30 @@ typedef struct {
   uint16_t sport;
   uint16_t dport;
   tos_t tos;
+  uint8_t ttl;
   uint8_t proto;
   uint32_t csum;
   uint32_t flow;  
 } ip_header_t;
+
+typedef struct {
+  int flags;
+  timespec_t ts;
+  timespec_t rtt;
+  uint32_t seqno;
+  uint8_t ttl;
+  tos_t tos;
+} per_packet_info_t;
+
+typedef struct  {
+  int fd;
+  int type;
+  ip_header_t header;
+  int size;
+  int ts_type;
+  uint32_t seqno;
+  int64_t nonce;
+  timespec_t ts;
+} pbuffer_t;
 
 #endif

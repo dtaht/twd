@@ -357,25 +357,6 @@ static int test_pthread1(ringbuffer__s *rbuf) {
   return 0;
 }
 
-typedef struct {
-  int flags;
-  timespec_t ts;
-  timespec_t rtt;
-  uint32_t seqno;
-  uint8_t ttl;
-  tos_t tos;
-} per_packet_info_t;
-
-typedef struct  {
-  int fd;
-  int type;
-  ip_header_t header;
-  int size;
-  int ts_type;
-  uint32_t seqno;
-  int64_t nonce;
-  timespec_t ts;
-} pbuffer_t;
 
 int settos(int p, int type, int tos, int ecn) {
   int dscp = tos | ecn;
